@@ -22,6 +22,13 @@ describe("GenerationWizard", () => {
     expect(fromDraft(draft)).toMatchObject({ ...values, nomeProduto: "", descricaoPdp: "", perfilUgc: "" });
   });
 
+  it("omits blank optional numbers while preserving explicit zero", () => {
+    const blank = toDraft({ ...fromDraft(base), notaMedia: "   ", quantidadeAvaliacoes: "" });
+    expect(blank.notaMedia).toBeUndefined(); expect(blank.quantidadeAvaliacoes).toBeUndefined();
+    const zero = toDraft({ ...fromDraft(base), notaMedia: "0", quantidadeAvaliacoes: "0" });
+    expect(zero.notaMedia).toBe(0); expect(zero.quantidadeAvaliacoes).toBe(0);
+  });
+
   it("flushes the latest partial draft when unmounted before the debounce", async () => {
     vi.useFakeTimers(); const saveDraft = vi.fn();
     const view = render(<GenerationWizard services={services({ saveDraft })} />);

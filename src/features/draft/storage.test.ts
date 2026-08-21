@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { assetStorage, draftStorage, type StoredImage } from "./storage";
 import { validateCreativeBatch } from "@/features/generation/validation";
 import { creativeBatchFixture, generationInputFixture } from "../../../tests/fixtures/creative-result";
+import { fromDraft, toDraft } from "@/features/wizard/generation-wizard";
 
 const draft = {
   nomeProduto: "Body splash",
@@ -45,6 +46,13 @@ describe("draftStorage", () => {
     draftStorage.save(draft);
     draftStorage.clear();
     expect(draftStorage.load()).toBeNull();
+  });
+
+  it("round-trips an intentional empty environment list with other partial edits", () => {
+    const partial = toDraft({ ...fromDraft(draft), nomeProduto: "Produto editado", ambientesTexto: "" });
+    expect(draftStorage.save(partial)).toBe(true);
+    expect(draftStorage.load()).toMatchObject({ nomeProduto: "Produto editado", ambientesPermitidos: [] });
+    expect(fromDraft(draftStorage.load()!)).toMatchObject({ nomeProduto: "Produto editado", ambientesTexto: "" });
   });
 });
 
