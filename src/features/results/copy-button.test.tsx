@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CopyButton } from "./copy-button";
@@ -33,6 +33,35 @@ describe("CopyButton", () => {
     await userEvent.click(button); await userEvent.click(button);
     expect(writeText).toHaveBeenCalledOnce(); expect(button).toBeDisabled();
     finish(); await waitFor(() => expect(button).toBeEnabled());
+  });
+
+  it("locks two synchronous clicks before React can render pending state", () => {
+    const writeText = vi.fn(() => new Promise<void>(() => undefined));
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<CopyButton text="seguro" label="Copiar" />);
+    const button = screen.getByRole("button", { name: "Copiar" });
+    act(() => { fireEvent.click(button); fireEvent.click(button); });
+    expect(writeText).toHaveBeenCalledOnce();
+  });
+
+  it("does not update UI after an unmounted clipboard completion", async () => {
+    let resolve!: () => void;
+    Object.assign(navigator, { clipboard: { writeText: vi.fn(() => new Promise<void>((done) => { resolve = done; })) } });
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const view = render(<CopyButton text="seguro" label="Copiar" />);
+    fireEvent.click(screen.getByRole("button", { name: "Copiar" })); view.unmount();
+    await act(async () => { resolve(); });
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it("does not update UI after an unmounted clipboard rejection", async () => {
+    let reject!: (error: Error) => void;
+    Object.assign(navigator, { clipboard: { writeText: vi.fn(() => new Promise<void>((_done, fail) => { reject = fail; })) } });
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const view = render(<CopyButton text="seguro" label="Copiar" />);
+    fireEvent.click(screen.getByRole("button", { name: "Copiar" })); view.unmount();
+    await act(async () => { reject(new Error("denied")); });
+    expect(error).not.toHaveBeenCalled();
   });
 
   it("announces clipboard failure without throwing", async () => {

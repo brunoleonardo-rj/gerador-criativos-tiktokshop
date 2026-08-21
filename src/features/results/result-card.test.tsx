@@ -42,6 +42,24 @@ describe("ResultCard", () => {
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("## Prompt VEO 3"));
   });
 
+  it("blocks all copy segments for a copy ancestor issue while retaining safe package fields", async () => {
+    const creative = { ...result(), issues: [{ code: "SEGMENT_STRUCTURE", severity: "block" as const, field: "copy", message: "Estrutura inválida" }], status: "blocked" as const };
+    const writeText = vi.fn().mockResolvedValue(undefined); Object.assign(navigator, { clipboard: { writeText } });
+    render(<ResultCard creative={creative} />);
+    expect(screen.getByRole("button", { name: "Copiar trecho 1" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Copiar trecho 2" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Copiar pacote completo" }));
+    expect(writeText).toHaveBeenCalledWith(expect.not.stringContaining("## Copy — trecho"));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("## Descrição"));
+  });
+
+  it("labels warnings and blocks with accessible severity", () => {
+    const creative = { ...result(), issues: [{ code: "ONE", severity: "block" as const, field: "descricao", message: "Bloqueie" }, { code: "TWO", severity: "warning" as const, field: "pov", message: "Revise" }], status: "blocked" as const };
+    render(<ResultCard creative={creative} />);
+    expect(screen.getByText("Bloqueio:")).toBeInTheDocument();
+    expect(screen.getByText("Atenção:")).toBeInTheDocument();
+  });
+
   it("opens with keyboard and displays real counts and rendered prompts", async () => {
     render(<ResultCard creative={result()} />);
     await userEvent.keyboard("{Tab}{Enter}");
