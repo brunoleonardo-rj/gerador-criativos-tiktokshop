@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { renderVeoTemplate, validateVeoTemplate, type VeoVariables } from "./veo-template";
+import { LibrarySettings } from "@/features/library/library-settings";
 
 export type PublicSettingsView = {
   apiKeyConfigured: boolean;
@@ -163,8 +164,7 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
       </section>
 
       <section role="tabpanel" id="settings-panel-library" aria-labelledby="settings-tab-library" hidden={activeTab !== "library"} className="grid gap-4 py-6 text-[#514955]">
-        <h2>Biblioteca Mestra</h2>
-        <p>Atualização e controle de versões estarão disponíveis aqui em breve.</p>
+        <LibrarySettings />
       </section>
 
       {status && <p role="status" className="mt-2 rounded-lg bg-[#f1edff] p-3 text-sm text-[#443181]">{status}</p>}
