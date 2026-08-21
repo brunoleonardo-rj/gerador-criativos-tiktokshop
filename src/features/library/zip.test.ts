@@ -30,4 +30,14 @@ describe("preflightXlsx", () => {
     const inflated = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); const deflated = deflatedCentral(inflated); const local = localFor(inflated, deflated); inflated.writeUInt32LE(1, deflated + 24); inflated.writeUInt32LE(1, local + 22); expect(() => preflightXlsx(inflated)).toThrow(/expandido/);
     expect(() => preflightXlsx(oversizedDeflate())).toThrow(/deflate excede/);
   });
+  it("rejeita ZIP64 em extras, versões e estruturas finais", async () => {
+    const centralExtra = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); const cc = central(centralExtra); const centralNameEnd = cc + 46 + centralExtra.readUInt16LE(cc + 28); centralExtra.writeUInt16LE(4, cc + 30); centralExtra.writeUInt16LE(1, centralNameEnd); centralExtra.writeUInt16LE(0, centralNameEnd + 2); expect(() => preflightXlsx(centralExtra)).toThrow(/ZIP64/);
+    const localExtra = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); const lc = central(localExtra); const lo = localFor(localExtra, lc); const localNameEnd = lo + 30 + localExtra.readUInt16LE(lo + 26); localExtra.writeUInt16LE(4, lo + 28); localExtra.writeUInt16LE(1, localNameEnd); localExtra.writeUInt16LE(0, localNameEnd + 2); expect(() => preflightXlsx(localExtra)).toThrow(/ZIP64/);
+    const version = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); const vc = central(version); version.writeUInt16LE(45, vc + 6); version.writeUInt16LE(45, localFor(version, vc) + 4); expect(() => preflightXlsx(version)).toThrow(/versão/);
+    const locator = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); locator.writeUInt32LE(0x07064b50, eocd(locator) - 20); expect(() => preflightXlsx(locator)).toThrow(/ZIP64/);
+    const record = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); record.writeUInt32LE(0x06064b50, eocd(record) - 76); expect(() => preflightXlsx(record)).toThrow(/ZIP64/);
+  });
+  it("rejeita campo extra truncado", async () => {
+    const truncated = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); truncated.writeUInt16LE(1, central(truncated) + 30); expect(() => preflightXlsx(truncated)).toThrow(/extra/);
+  });
 });
