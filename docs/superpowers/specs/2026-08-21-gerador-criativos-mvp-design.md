@@ -23,6 +23,7 @@ O MVP inclui:
 - saída estruturada e validada;
 - resultados em cards com cópia por campo;
 - configurações persistentes para credencial Anthropic, modelo e template VEO 3;
+- atualização manual da biblioteca mestra por upload da planilha-base;
 - Prompt VEO 3 preenchido com a copy de cada criativo;
 - rascunho e último resultado preservados no navegador;
 - build Node.js autônomo compatível com publicação posterior no aaPanel;
@@ -53,7 +54,7 @@ O projeto não usará servidor customizado. O servidor integrado do Next.js forn
 1. **Interface web:** login, navegação, formulário, uploads, configurações e resultados.
 2. **Camada de autenticação:** emissão e validação de sessão assinada.
 3. **Camada de configurações:** persistência SQLite, criptografia de credenciais e renderização do template VEO 3.
-4. **Pipeline de biblioteca:** conversão da planilha mestra para JSON e seleção de exemplos relevantes.
+4. **Pipeline de biblioteca:** importação, validação, versionamento, conversão para JSON e seleção de exemplos relevantes.
 5. **Pipeline de geração:** montagem do prompt, chamada Anthropic, parsing e pós-processamento.
 6. **Validação editorial:** regras determinísticas com severidade por campo.
 7. **Persistência no navegador:** rascunho textual, imagens redimensionadas e último resultado.
@@ -76,6 +77,10 @@ Cada componente terá interfaces próprias e dependências injetáveis onde houv
 - `GET /api/settings`: devolve somente estado mascarado e valores não secretos.
 - `PUT /api/settings`: atualiza chave, modelo e template.
 - `DELETE /api/settings/api-key`: remove a credencial armazenada.
+- `GET /api/library/status`: devolve metadados das versões ativa e anterior.
+- `POST /api/library/import`: recebe, valida e prepara uma nova planilha sem ativá-la.
+- `POST /api/library/activate`: ativa uma importação previamente validada.
+- `POST /api/library/rollback`: restaura a versão anterior.
 - `POST /api/generate`: valida a entrada, chama a Anthropic e devolve o pacote processado.
 - `GET /api/health`: informa apenas disponibilidade do processo, sem dados privados.
 
@@ -112,7 +117,7 @@ O segredo completo nunca será recuperável pela interface. O administrador pode
 
 ## Persistência server-side
 
-O SQLite será usado somente para configurações no MVP. Prisma gerenciará o schema e as migrações.
+O SQLite será usado para configurações e metadados de versões da biblioteca no MVP. Prisma gerenciará o schema e as migrações.
 
 Modelo lógico:
 
@@ -128,17 +133,30 @@ AppSettings
   veoTemplate: string
   createdAt: datetime
   updatedAt: datetime
+
+LibraryVersion
+  id: cuid
+  sourceFilename: string
+  sourceSha256: string
+  recordCount: integer
+  workbookPath: string
+  jsonPath: string
+  status: ACTIVE | PREVIOUS | STAGED
+  validationSummary: json
+  createdAt: datetime
+  activatedAt: datetime | null
 ```
 
-O arquivo do banco ficará sob `DATA_DIR`, com default local `./data`. O diretório deverá ser persistente e gravável no aaPanel. A aplicação criará o registro singleton com modelo e template padrão na primeira leitura.
+O arquivo do banco e as versões importadas ficarão sob `DATA_DIR`, com default local `./data`. O diretório deverá ser persistente e gravável no aaPanel. A aplicação criará o registro singleton com modelo e template padrão na primeira leitura.
 
 ## Configurações
 
-A página `/configuracoes` terá três grupos:
+A página `/configuracoes` terá quatro grupos:
 
 1. **Credencial Anthropic:** status, máscara, substituir e remover.
 2. **Modelo:** campo editável com default `claude-sonnet-5`.
 3. **Template VEO 3:** editor multilinha, lista de variáveis aceitas e prévia com dados fictícios.
+4. **Biblioteca Mestra:** versão ativa, upload, prévia de validação, ativação e reversão.
 
 Variáveis aceitas no template:
 
@@ -214,7 +232,42 @@ Falhas de API, logout e atualização da página não apagam o rascunho. Um coma
 
 A fonte é `outputs/copy-library-20260819/Biblioteca_Mestra_Copys_TikTok_Shop.xlsx`, com 75 vídeos únicos organizados nas abas Resumo, Catalogo, Hooks, Corpos, CTAs, Playbook, Hashtags e Fontes.
 
-Um script reprodutível converterá a planilha para JSON versionado. O JSON conterá somente os campos editoriais necessários; URLs e caminhos de fonte serão mantidos para rastreabilidade, mas não enviados ao modelo quando não ajudarem a geração.
+Um script reprodutível converterá a planilha para JSON versionado. O JSON conterá somente os campos editoriais necessários; URLs e caminhos de fonte serão mantidos para rastreabilidade, mas não enviados ao modelo quando não ajudarem a geração. Esse conversor será a única implementação canônica, usada tanto para preparar a biblioteca inicial quanto para importações feitas pela interface.
+
+### Atualização manual
+
+O administrador poderá enviar uma nova planilha `.xlsx` baseada na mesma estrutura da fonte original. A importação aceitará um arquivo de até 20 MB e exigirá as oito abas atuais: Resumo, Catalogo, Hooks, Corpos, CTAs, Playbook, Hashtags e Fontes.
+
+`POST /api/library/import` colocará o arquivo em uma área temporária dentro de `DATA_DIR` e verificará:
+
+- formato real XLSX;
+- presença e nomes das abas obrigatórias;
+- cabeçalhos obrigatórios de cada aba;
+- tipos de dados essenciais;
+- IDs ausentes ou duplicados;
+- linhas editoriais vazias;
+- fórmulas com erros conhecidos;
+- consistência entre o total do catálogo e as abas derivadas;
+- existência de ao menos um criativo utilizável;
+- conversão integral para o schema JSON interno.
+
+Uma importação válida ficará com status `STAGED` e devolverá uma prévia com:
+
+- quantidade de criativos;
+- produtos encontrados;
+- mecanismos encontrados;
+- distribuição por status e confiança;
+- registros adicionados e removidos em relação à versão ativa;
+- avisos não bloqueantes;
+- SHA-256 do arquivo.
+
+O usuário precisará confirmar a ativação. `POST /api/library/activate` aceitará somente o identificador de uma importação validada e ainda existente. A ativação gravará primeiro o XLSX e o JSON em caminhos finais, verificará novamente o hash e, em uma transação, marcará a versão ativa como anterior e a importação como ativa.
+
+A aplicação manterá somente a versão ativa e a anterior. `POST /api/library/rollback` trocará essas posições após validar que os arquivos da versão anterior ainda existem e correspondem aos hashes registrados. Arquivos staged sem confirmação serão removidos após 24 horas.
+
+Se upload, parsing, validação, gravação ou transação falhar, a biblioteca ativa permanece inalterada. Gerações em andamento continuarão usando a versão carregada no início da requisição.
+
+A tela mostrará nome do arquivo, data de ativação, quantidade de registros e hash abreviado das versões ativa e anterior. O arquivo completo não ficará acessível por URL pública.
 
 ### Seleção de contexto
 
@@ -338,6 +391,8 @@ O visual será de estúdio criativo: fundo claro levemente quente, tipografia fo
 - **Violação editorial:** resultado exibido com bloqueios por campo.
 - **Banco indisponível:** página segura de erro; nenhuma configuração é substituída.
 - **Template inválido:** salvamento rejeitado com indicação das variáveis incorretas.
+- **Biblioteca inválida:** relatório de validação exibido sem substituir a versão ativa.
+- **Ativação interrompida:** arquivos staged preservados para nova tentativa; versão ativa intacta.
 
 Erros do SDK serão mapeados para códigos internos estáveis. Logs conterão request ID, duração, modelo e uso de tokens quando disponível; não conterão prompts completos, imagens, chave, senha ou cookie.
 
@@ -354,6 +409,8 @@ A implementação seguirá TDD com Vitest, Testing Library e Playwright.
 - diferenciação entre criativos;
 - parser e renderizador do template VEO 3;
 - seleção determinística da biblioteca;
+- validação e conversão da planilha-base;
+- comparação entre versões da biblioteca;
 - criptografia e descriptografia;
 - criação e validação da sessão.
 
@@ -364,6 +421,7 @@ A implementação seguirá TDD com Vitest, Testing Library e Playwright.
 - leitura e gravação mascarada das configurações;
 - chave cifrada no SQLite;
 - montagem da requisição Anthropic;
+- preparação, ativação atômica e reversão da biblioteca;
 - recusa, timeout, credencial inválida e resposta válida;
 - validação e renderização do resultado.
 
@@ -374,6 +432,7 @@ A implementação seguirá TDD com Vitest, Testing Library e Playwright.
 - redimensionamento e remoção de uploads;
 - restauração do rascunho;
 - login, configuração e geração com Anthropic simulada;
+- upload de biblioteca, prévia, confirmação e rollback;
 - exibição e cópia de Prompt Gemini e VEO 3;
 - impossibilidade de copiar campo bloqueado;
 - preservação após falha.
@@ -391,8 +450,10 @@ Os testes não chamarão a API real. O cliente Anthropic será injetável e subs
 7. Nenhum par de criativos compartilha simultaneamente ambiente, pose e conjunto de hashtags.
 8. Todo Prompt VEO 3 sai sem variáveis pendentes e contém a copy correta do criativo.
 9. Falhas preservam o formulário e oferecem ação clara.
-10. O build `standalone` inicia como processo Node sem dependência de Vercel.
-11. Uma geração real de cinco criativos é medida separadamente; a meta é menos de 90 segundos, sem tornar o teste automatizado dependente da latência externa.
+10. Uma planilha inválida nunca altera a biblioteca ativa.
+11. Uma planilha válida mostra prévia antes da ativação e pode ser revertida para a versão anterior.
+12. O build `standalone` inicia como processo Node sem dependência de Vercel.
+13. Uma geração real de cinco criativos é medida separadamente; a meta é menos de 90 segundos, sem tornar o teste automatizado dependente da latência externa.
 
 ## Operação no aaPanel
 
@@ -405,7 +466,7 @@ A documentação de implantação posterior deverá exigir:
 - limite de corpo compatível com as imagens redimensionadas;
 - timeout do proxy superior a 100 segundos;
 - execução das migrações antes de iniciar a nova versão;
-- backup do SQLite antes de migrações futuras.
+- backup do SQLite e das versões da biblioteca antes de migrações futuras.
 
 O MVP será entregue localmente. Publicação, DNS, certificado e configuração efetiva do aaPanel não fazem parte desta implementação.
 
