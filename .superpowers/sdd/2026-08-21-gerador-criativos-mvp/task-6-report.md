@@ -46,3 +46,10 @@
 - A raiz e os containers são criados em modo privado quando suportado e validados por `lstat`/`realpath`; containers linkados ou não-diretórios são recusados antes de operações de escrita, promoção e cleanup.
 - Verificações focadas: `pnpm test src/features/library/service.test.ts src/features/library/repository.integration.test.ts src/features/library/storage.test.ts` (6 testes), `pnpm lint`, `pnpm build` e Prisma generate aprovados.
 - Após corrigir o trace dinâmico do Turbopack, `pnpm test` voltou a passar integralmente: 26 arquivos e 97 testes.
+
+## Fix round 3/5
+
+- RED: a integração que passava SQL de múltiplas instruções pelo adaptador Prisma falhou com `RangeError`; a inicialização anterior também criava caminhos recursivamente antes de validar alvos existentes.
+- GREEN: os testes agora executam os arquivos SQL de migração reais por `better-sqlite3` em banco isolado, incluindo upgrade legado (`NULL`) e aplicação fresca; recursos são fechados em `finally`.
+- A raiz segura é cacheada e os containers são criados somente de forma não-recursiva após a validação de seus pais; `writeStaged` valida o temporário recém-criado e só remove diretório temporário regular não-linkado.
+- Verificado: `pnpm test src/features/library/repository.integration.test.ts`, `pnpm test src/features/library`, `pnpm lint`.
