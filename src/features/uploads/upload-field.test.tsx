@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UploadField } from "./upload-field";
+import { resizeImage } from "./resize";
 
 vi.mock("./resize", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./resize")>()),
@@ -44,5 +45,22 @@ describe("UploadField", () => {
     render(<UploadField role="ugc" min={1} max={5} items={[item]} onChange={onChange} />);
     await userEvent.click(screen.getByRole("button", { name: /remover pessoa.jpg/i }));
     expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  it("serializes selections so late image processing cannot overwrite an earlier selection", async () => {
+    const onChange = vi.fn();
+    let resolveFirst!: (value: { blob: Blob; name: string; type: "image/jpeg"; width: number; height: number; size: number }) => void;
+    let resolveSecond!: (value: { blob: Blob; name: string; type: "image/jpeg"; width: number; height: number; size: number }) => void;
+    vi.mocked(resizeImage).mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; })).mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
+    render(<UploadField role="product" min={1} max={2} items={[]} onChange={onChange} />);
+    const input = screen.getByLabelText(/fotos do produto/i);
+    fireEvent.change(input, { target: { files: [new File(["a"], "a.jpg", { type: "image/jpeg" })] } });
+    fireEvent.change(input, { target: { files: [new File(["b"], "b.jpg", { type: "image/jpeg" })] } });
+    await waitFor(() => expect(resolveFirst).toBeTypeOf("function"));
+    resolveFirst({ blob: new Blob(["a"], { type: "image/jpeg" }), name: "a.jpg", type: "image/jpeg", width: 1, height: 1, size: 1 });
+    await waitFor(() => expect(resolveSecond).toBeTypeOf("function"));
+    resolveSecond({ blob: new Blob(["b"], { type: "image/jpeg" }), name: "b.jpg", type: "image/jpeg", width: 1, height: 1, size: 1 });
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ name: "a.jpg" }), expect.objectContaining({ name: "b.jpg" })])));
+    expect(onChange.mock.lastCall?.[0].map((item: { name: string }) => item.name)).toEqual(["a.jpg", "b.jpg"]);
   });
 });

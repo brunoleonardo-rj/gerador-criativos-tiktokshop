@@ -1,13 +1,22 @@
 import { openDB, type DBSchema } from "idb";
+import { z } from "zod";
 import type { GenerationEnvelope } from "@/features/generation/validation";
+import { creativeBatchSchema, creativeSchema } from "@/features/generation/schema";
 import { draftSchema, type Draft } from "./schema";
 
 export const DRAFT_STORAGE_KEY = "creative-generator:draft:v1";
 const DATABASE_NAME = "creative-generator";
 
 export type ImageRole = "ugc" | "product" | "ad";
-export type StoredImage = { id: string; role: ImageRole; blob: Blob; name: string; type: "image/jpeg" | "image/png" | "image/webp"; width: number; height: number; size: number };
+export type StoredImage = { id: string; role: ImageRole; blob: Blob; name: string; type: "image/jpeg" | "image/png" | "image/webp"; width: number; height: number; size: number; order?: number };
 export type StoredResult = GenerationEnvelope & { id: string };
+
+const blobSchema = z.custom<Blob>((value) => value instanceof Blob || Boolean(value && typeof value === "object" && "size" in value && "type" in value), "Blob esperado");
+const imageSchema = z.object({ id: z.string().uuid(), role: z.enum(["ugc", "product", "ad"]), blob: blobSchema, name: z.string().min(1).max(500), type: z.enum(["image/jpeg", "image/png", "image/webp"]), width: z.number().int().positive().max(1568), height: z.number().int().positive().max(1568), size: z.number().int().nonnegative(), order: z.number().int().nonnegative().optional() }).strict();
+const storedImageSchema = imageSchema.extend({ blob: z.unknown() });
+const issueSchema = z.object({ code: z.string(), severity: z.enum(["warning", "block"]), field: z.string(), message: z.string() }).strict();
+const envelopeCreativeSchema = creativeSchema.extend({ veoPrompt: z.string().nullable(), actualCounts: z.object({ trecho1: z.number().int().nonnegative(), trecho2: z.number().int().nonnegative(), trecho3: z.number().int().nonnegative().nullable(), pov: z.number().int().nonnegative() }).strict(), issues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]) }).strict();
+const resultSchema = creativeBatchSchema.omit({ creatives: true }).extend({ id: z.string().uuid(), creatives: z.array(envelopeCreativeSchema).min(1).max(8), batchIssues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]), settingsUpdatedAt: z.string().datetime().nullable() }).strict();
 
 interface CreativeDatabase extends DBSchema {
   images: { key: string; value: StoredImage };
@@ -48,7 +57,7 @@ export const draftStorage = {
 
 let databasePromise: ReturnType<typeof openDB<CreativeDatabase>> | undefined;
 function database() {
-  databasePromise ??= openDB<CreativeDatabase>(DATABASE_NAME, 1, {
+  databasePromise ??= openDB<CreativeDatabase>(DATABASE_NAME, 2, {
     upgrade(db) {
       if (!db.objectStoreNames.contains("images")) db.createObjectStore("images", { keyPath: "id" });
       if (!db.objectStoreNames.contains("results")) db.createObjectStore("results", { keyPath: "id" });
@@ -58,11 +67,27 @@ function database() {
 }
 
 export const assetStorage = {
-  async putImage(image: StoredImage): Promise<void> { const db = await database(); await db.put("images", image); },
-  async listImages(): Promise<StoredImage[]> { const db = await database(); return (await db.getAll("images")).sort((a, b) => a.id.localeCompare(b.id)); },
+  async putImage(image: StoredImage): Promise<void> {
+    const db = await database(); const transaction = db.transaction("images", "readwrite");
+    const images = await transaction.store.getAll();
+    const valid = imageSchema.parse(image);
+    await transaction.store.put({ ...valid, order: valid.order ?? images.reduce((highest, item) => Math.max(highest, storedImageSchema.safeParse(item).data?.order ?? -1), -1) + 1 });
+    await transaction.done;
+  },
+  async listImages(): Promise<StoredImage[]> {
+    const db = await database(); const images = await db.getAll("images"); const valid: StoredImage[] = [];
+    for (const [index, image] of images.entries()) { const parsed = storedImageSchema.safeParse(image); if (parsed.success) valid.push({ ...parsed.data, blob: parsed.data.blob as Blob, order: parsed.data.order ?? index }); }
+    return valid.sort((a, b) => (a.order! - b.order!) || a.id.localeCompare(b.id));
+  },
   async deleteImage(id: string): Promise<void> { const db = await database(); await db.delete("images", id); },
   async clearImages(): Promise<void> { const db = await database(); await db.clear("images"); },
-  async putResult(result: StoredResult): Promise<void> { const db = await database(); await db.put("results", result); },
-  async getResult(id: string): Promise<StoredResult | undefined> { const db = await database(); return db.get("results", id); },
+  async putResult(result: StoredResult): Promise<void> { const db = await database(); await db.put("results", resultSchema.parse(result)); },
+  async getResult(id: string): Promise<StoredResult | undefined> {
+    if (!z.string().uuid().safeParse(id).success) return undefined;
+    const db = await database(); const result = await db.get("results", id); const parsed = resultSchema.safeParse(result);
+    if (parsed.success) return parsed.data;
+    if (result) await db.delete("results", id);
+    return undefined;
+  },
   async clearResults(): Promise<void> { const db = await database(); await db.clear("results"); },
 };

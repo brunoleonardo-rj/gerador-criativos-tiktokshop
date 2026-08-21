@@ -22,6 +22,11 @@ function hasTransparency(canvas: HTMLCanvasElement): boolean {
   return false;
 }
 
+function renamedFile(name: string, type: AcceptedImageType): string {
+  const safeBase = name.replace(/[\\/:*?"<>|\u0000-\u001f]/gu, "_").replace(/\.[^.]*$/u, "").trim() || "imagem";
+  return `${safeBase}.${type === "image/jpeg" ? "jpg" : type === "image/png" ? "png" : "webp"}`;
+}
+
 export async function resizeImage(file: File): Promise<ResizedImage> {
   if (!acceptedType(file.type)) throw new Error("Formato de imagem não suportado. Use JPEG, PNG ou WEBP.");
   if (typeof createImageBitmap !== "function") throw new Error("Não foi possível decodificar a imagem neste navegador.");
@@ -37,7 +42,7 @@ export async function resizeImage(file: File): Promise<ResizedImage> {
     context.drawImage(source, 0, 0, dimensions.width, dimensions.height);
     const type: AcceptedImageType = file.type === "image/png" && hasTransparency(canvas) ? "image/png" : file.type === "image/webp" ? "image/webp" : "image/jpeg";
     const blob = await canvasBlob(canvas, type);
-    return { blob, name: file.name, type, width: dimensions.width, height: dimensions.height, size: blob.size };
+    return { blob, name: renamedFile(file.name, type), type, width: dimensions.width, height: dimensions.height, size: blob.size };
   } catch (error) {
     if (error instanceof Error) throw error;
     throw new Error("Não foi possível processar a imagem.");
