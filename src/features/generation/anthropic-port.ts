@@ -37,11 +37,18 @@ export class AnthropicSdkAdapter implements AnthropicPort {
 }
 
 export class FakeAnthropicAdapter implements AnthropicPort {
-  constructor(private readonly result: AnthropicResult) {}
+  constructor(private readonly result: AnthropicResult = { batch: e2eCreativeBatch(), usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 } }) {}
   async generate(): Promise<AnthropicResult> { return this.result; }
 }
 
-export function getAnthropicPort(): AnthropicPort {
-  if (process.env.NODE_ENV !== "production" && process.env.E2E_FAKE_ANTHROPIC === "1") throw new Error("Fake Anthropic requires explicit test injection");
+function e2eCreativeBatch(): CreativeBatch {
+  return creativeBatchSchema.parse({
+    produtoNormalizado: "Produto de teste", fatos: ["Use somente os fatos fornecidos."], riscos: [], checklistPublicacao: ["Revise antes de publicar."],
+    creatives: [{ id: "e2e-creative-1", angulo: "Demonstração", ambiente: "cozinha", figurino: "camiseta neutra", pose: "segurando o produto", promptGemini: "Cenário: cozinha\nPessoa: adulta\nProduto: produto de teste\nAção: demonstra o uso\nEnquadramento: médio\nIluminação: natural\nÁudio: fala em português brasileiro\nEstilo: UGC natural\nRestrições: sem texto na tela e sem sobreposições visuais", copy: { trecho1: { texto: "Eu uso este produto todos os dias na minha rotina e ele deixa tudo muito mais simples para mim.", palavras: 19, segundos: 10 }, trecho2: { texto: "É uma opção prática para quem busca facilitar pequenos cuidados sem complicar a rotina em casa.", palavras: 16, segundos: 10 }, trecho3: null }, descricao: "Demonstração simples do produto na rotina.", hashtags: ["#rotina", "#casa", "#pratico", "#bemestar", "#dicas"], pov: { texto: "POV: rotina prática 💧", palavras: 3, emoji: "💧" }, textoNaTela: null, descartavel: false, motivoDescartavel: null }],
+  });
+}
+
+export function getAnthropicPort(environment: Partial<Pick<NodeJS.ProcessEnv, "NODE_ENV" | "E2E_FAKE_ANTHROPIC">> = process.env): AnthropicPort {
+  if (environment.NODE_ENV !== "production" && environment.E2E_FAKE_ANTHROPIC === "1") return new FakeAnthropicAdapter();
   return new AnthropicSdkAdapter();
 }

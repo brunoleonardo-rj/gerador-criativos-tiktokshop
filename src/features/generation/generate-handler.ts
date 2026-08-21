@@ -5,7 +5,7 @@ import { GenerationFailure, type GenerationErrorCode } from "./anthropic-port";
 import type { GenerationImage } from "./prompt-builder";
 
 const MAX_FILE_BYTES = 3 * 1024 * 1024;
-const MAX_BODY_BYTES = 40 * 1024 * 1024;
+export const MAX_BODY_BYTES = 56 * 1024 * 1024;
 const roles = { product: { max: 8, forward: true }, ad: { max: 5, forward: true }, ugc: { max: 5, forward: false } } as const;
 const mimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 class PayloadTooLarge extends Error {}

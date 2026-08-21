@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { generationInputFixture } from "../../../tests/fixtures/creative-result";
-import { makeGenerateHandler } from "./generate-handler";
+import { MAX_BODY_BYTES, makeGenerateHandler } from "./generate-handler";
 
 async function multipart(input: unknown, files: Array<{ role: string; mime: string; bytes: Uint8Array<ArrayBuffer> }>) {
   const boundary = "test-boundary"; const parts: BlobPart[] = [`--${boundary}\r\nContent-Disposition: form-data; name="payload"\r\n\r\n${JSON.stringify(input)}\r\n`];
@@ -8,6 +8,7 @@ async function multipart(input: unknown, files: Array<{ role: string; mime: stri
   parts.push(`--${boundary}--\r\n`); return new Request("http://local/api/generate", { method: "POST", headers: { "content-type": `multipart/form-data; boundary=${boundary}` }, body: await new Blob(parts).arrayBuffer() });
 }
 const response = { creatives: [], batchIssues: [], status: "valid", produtoNormalizado: "x", fatos: [], riscos: [], checklistPublicacao: [], settingsUpdatedAt: null };
+const threeMiBJpeg = () => { const bytes = new Uint8Array(3 * 1024 * 1024); bytes.set([0xff, 0xd8, 0xff, 0xdb]); return bytes; };
 
 describe("makeGenerateHandler", () => {
   it("ignores UGC while forwarding only product and ad images", async () => {
@@ -21,5 +22,21 @@ describe("makeGenerateHandler", () => {
   it("rejects a mismatched image signature and forbidden field", async () => {
     const handler = makeGenerateHandler({ service: { generate: vi.fn() }, requireSession: async () => ({}), enforceSameOrigin: () => undefined });
     expect((await handler(await multipart(generationInputFixture(), [{ role: "product", mime: "image/jpeg", bytes: new TextEncoder().encode("not image") }]))).status).toBe(422);
+  });
+  it("accepts the contracted 18-file multipart body without Content-Length", async () => {
+    const generate = vi.fn().mockResolvedValue(response);
+    const handler = makeGenerateHandler({ service: { generate }, requireSession: async () => ({}), enforceSameOrigin: () => undefined });
+    const files = [...Array.from({ length: 8 }, () => "product"), ...Array.from({ length: 5 }, () => "ad"), ...Array.from({ length: 5 }, () => "ugc")].map((role) => ({ role, mime: "image/jpeg", bytes: threeMiBJpeg() }));
+    const request = await multipart(generationInputFixture(), files);
+    expect(request.headers.has("content-length")).toBe(false);
+    expect((await handler(request)).status).toBe(200);
+    expect(generate).toHaveBeenCalledOnce();
+  }, 30_000);
+  it("rejects chunked bodies over the finite total limit", async () => {
+    let sent = 0; const chunk = new Uint8Array(1024 * 1024);
+    const stream = new ReadableStream<Uint8Array>({ pull(controller) { if (sent > MAX_BODY_BYTES) controller.close(); else { controller.enqueue(chunk); sent += chunk.byteLength; } } });
+    const request = new Request("http://local/api/generate", { method: "POST", headers: { "content-type": "multipart/form-data; boundary=x" }, body: stream, duplex: "half" } as RequestInit);
+    expect(request.headers.has("content-length")).toBe(false);
+    expect((await makeGenerateHandler({ service: { generate: vi.fn() }, requireSession: async () => ({}), enforceSameOrigin: () => undefined })(request)).status).toBe(413);
   });
 });
