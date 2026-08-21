@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { safeRedirect } from "./safe-redirect";
 
 const FAILURE_MESSAGE = "Credenciais inválidas ou acesso temporariamente bloqueado";
 
@@ -30,8 +31,7 @@ export function LoginForm() {
         setError(FAILURE_MESSAGE);
         return;
       }
-      const next = searchParams.get("next");
-      router.replace(next?.startsWith("/") ? next : "/");
+      router.replace(safeRedirect(searchParams.get("next")));
       router.refresh();
     } catch {
       setError(FAILURE_MESSAGE);
