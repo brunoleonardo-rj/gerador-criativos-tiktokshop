@@ -14,6 +14,7 @@ describe("getServerEnv", () => {
       ADMIN_USERNAME: "admin",
       ADMIN_PASSWORD: "senha-segura",
       AUTH_SECRET: "a".repeat(32),
+      TRUSTED_PROXY_SECRET: "p".repeat(32),
       SETTINGS_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
       DATA_DIR: "./data-test",
     });
@@ -30,9 +31,23 @@ describe("getServerEnv", () => {
         ADMIN_USERNAME: "admin",
         ADMIN_PASSWORD: "senha-segura",
         AUTH_SECRET: "a".repeat(32),
+        TRUSTED_PROXY_SECRET: "p".repeat(32),
         SETTINGS_ENCRYPTION_KEY: nonCanonicalKey,
       }),
     ).toThrow(/32 bytes em base64/);
+  });
+
+  it("rejeita segredo de proxy ausente ou fraco", () => {
+    const valid = {
+      NODE_ENV: "test" as const,
+      ADMIN_USERNAME: "admin",
+      ADMIN_PASSWORD: "senha-segura",
+      AUTH_SECRET: "a".repeat(32),
+      SETTINGS_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
+    };
+
+    expect(() => getServerEnv(valid)).toThrow(/TRUSTED_PROXY_SECRET/);
+    expect(() => getServerEnv({ ...valid, TRUSTED_PROXY_SECRET: "curto" })).toThrow(/TRUSTED_PROXY_SECRET/);
   });
 
   it("rejeita o exemplo de ambiente até que os segredos sejam substituídos", () => {

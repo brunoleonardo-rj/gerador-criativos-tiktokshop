@@ -9,6 +9,7 @@ const schema = z.object({
   ADMIN_USERNAME: z.string().min(1),
   ADMIN_PASSWORD: z.string().min(12),
   AUTH_SECRET: z.string().min(32),
+  TRUSTED_PROXY_SECRET: z.string().min(32),
   SETTINGS_ENCRYPTION_KEY: z.string().refine(
     (value) => canonicalBase64.test(value) && Buffer.from(value, "base64").length === 32,
     "deve ter 32 bytes em base64",

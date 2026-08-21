@@ -13,6 +13,7 @@ describe("request guards", () => {
       ADMIN_USERNAME: "admin",
       ADMIN_PASSWORD: "senha-segura",
       AUTH_SECRET: "s".repeat(32),
+      TRUSTED_PROXY_SECRET: "p".repeat(32),
       SETTINGS_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
     };
   });

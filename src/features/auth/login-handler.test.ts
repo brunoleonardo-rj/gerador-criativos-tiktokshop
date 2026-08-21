@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { makeLoginHandler } from "./login-handler";
 import { LoginRateLimiter } from "./rate-limit";
+import { createTrustedAddressResolver } from "./trusted-address";
 
 describe("makeLoginHandler", () => {
   const expected = { username: "admin", password: "senha-correta" };
@@ -90,5 +91,33 @@ describe("makeLoginHandler", () => {
     const rotated = await handler(request(expected, { "x-forwarded-for": "spoof-b" }));
 
     expect(rotated.status).toBe(401);
+  });
+
+  it("não permite rotação de IP sem prova válida de proxy", async () => {
+    const handler = makeLoginHandler({
+      expected,
+      secret,
+      limiter: new LoginRateLimiter({ maxAttempts: 1, windowMs: 900_000 }),
+      globalLimiter: globalLimiter(),
+      resolveAddress: createTrustedAddressResolver("p".repeat(32)),
+    });
+    await handler(request({ username: "admin", password: "errada" }, { "x-trusted-client-ip": "192.0.2.1" }));
+    const rotated = await handler(request(expected, { "x-trusted-client-ip": "192.0.2.2", "x-trusted-proxy-secret": "errada" }));
+
+    expect(rotated.status).toBe(401);
+  });
+
+  it("separa buckets para endereços autenticados pelo proxy", async () => {
+    const handler = makeLoginHandler({
+      expected,
+      secret,
+      limiter: new LoginRateLimiter({ maxAttempts: 1, windowMs: 900_000 }),
+      globalLimiter: globalLimiter(),
+      resolveAddress: createTrustedAddressResolver("p".repeat(32)),
+    });
+    await handler(request({ username: "admin", password: "errada" }, { "x-trusted-client-ip": "192.0.2.1", "x-trusted-proxy-secret": "p".repeat(32) }));
+    const distinct = await handler(request(expected, { "x-trusted-client-ip": "192.0.2.2", "x-trusted-proxy-secret": "p".repeat(32) }));
+
+    expect(distinct.status).toBe(204);
   });
 });
