@@ -8,6 +8,8 @@ const localFor = (buffer: Buffer, centralOffset = central(buffer)) => buffer.rea
 const nextCentral = (buffer: Buffer, offset = central(buffer)) => buffer.indexOf(Buffer.from("PK\x01\x02"), offset + 4);
 function deflatedCentral(buffer: Buffer) { for (let offset = central(buffer); offset >= 0; offset = nextCentral(buffer, offset)) if (buffer.readUInt16LE(offset + 10) === 8) return offset; throw new Error("fixture sem deflate"); }
 function sameLengthPair(buffer: Buffer) { const entries: number[] = []; for (let offset = central(buffer); offset >= 0; offset = nextCentral(buffer, offset)) entries.push(offset); for (const first of entries) for (const second of entries) if (first !== second && buffer.readUInt16LE(first + 28) === buffer.readUInt16LE(second + 28)) return [first, second] as const; throw new Error("fixture sem par de nomes"); }
+function insertBeforeEocd(buffer: Buffer, bytes: Buffer) { const offset = eocd(buffer); return Buffer.concat([buffer.subarray(0, offset), bytes, buffer.subarray(offset)]); }
+function variableLengthZip64Eocd() { const extensibleData = Buffer.from([0xde, 0xad, 0xbe, 0xef]); const record = Buffer.alloc(56 + extensibleData.length); record.writeUInt32LE(0x06064b50, 0); record.writeBigUInt64LE(BigInt(44 + extensibleData.length), 4); extensibleData.copy(record, 56); return record; }
 function oversizedDeflate() { const name = Buffer.from("xl/large.bin"); const compressed = deflateRawSync(Buffer.alloc(6 * 1024 * 1024)); const local = Buffer.alloc(30 + name.length + compressed.length); local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(8, 8); local.writeUInt32LE(compressed.length, 18); local.writeUInt32LE(1, 22); local.writeUInt16LE(name.length, 26); name.copy(local, 30); compressed.copy(local, 30 + name.length); const centralDirectory = Buffer.alloc(46 + name.length); centralDirectory.writeUInt32LE(0x02014b50, 0); centralDirectory.writeUInt16LE(20, 4); centralDirectory.writeUInt16LE(20, 6); centralDirectory.writeUInt16LE(8, 10); centralDirectory.writeUInt32LE(compressed.length, 20); centralDirectory.writeUInt32LE(1, 24); centralDirectory.writeUInt16LE(name.length, 28); name.copy(centralDirectory, 46); const end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(1, 8); end.writeUInt16LE(1, 10); end.writeUInt32LE(centralDirectory.length, 12); end.writeUInt32LE(local.length, 16); return Buffer.concat([local, centralDirectory, end]); }
 describe("preflightXlsx", () => {
   it("aceita um XLSX normal", async () => {
@@ -39,5 +41,14 @@ describe("preflightXlsx", () => {
   });
   it("rejeita campo extra truncado", async () => {
     const truncated = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); truncated.writeUInt16LE(1, central(truncated) + 30); expect(() => preflightXlsx(truncated)).toThrow(/extra/);
+  });
+  it("rejeita registro ZIP64 variável entre o diretório central e EOCD", async () => {
+    const workbook = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); const malformed = insertBeforeEocd(workbook, variableLengthZip64Eocd()); const ordinaryEocd = eocd(malformed);
+    expect(malformed.readUInt16LE(ordinaryEocd + 10)).not.toBe(0xffff); expect(malformed.readUInt32LE(ordinaryEocd + 12)).not.toBe(0xffffffff); expect(malformed.readUInt32LE(ordinaryEocd + 16)).not.toBe(0xffffffff);
+    expect(() => preflightXlsx(malformed)).toThrow(/diretório central|EOCD/);
+  });
+  it("rejeita qualquer lacuna entre o diretório central e EOCD", async () => {
+    const workbook = await buildWorkbookFixture([{ id: "1", produto: "P", mecanismo: "M" }]); const malformed = insertBeforeEocd(workbook, Buffer.from("PK\x05\x05\x00\x00\x00\x00"));
+    expect(() => preflightXlsx(malformed)).toThrow(/diretório central|EOCD/);
   });
 });
