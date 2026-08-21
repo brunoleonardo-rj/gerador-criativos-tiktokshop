@@ -63,4 +63,20 @@ describe("UploadField", () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ name: "a.jpg" }), expect.objectContaining({ name: "b.jpg" })])));
     expect(onChange.mock.lastCall?.[0].map((item: { name: string }) => item.name)).toEqual(["a.jpg", "b.jpg"]);
   });
+
+  it("applies a completed resize to the latest external items without resurrecting a removed item", async () => {
+    const onChange = vi.fn();
+    let resolveResize!: (value: { blob: Blob; name: string; type: "image/jpeg"; width: number; height: number; size: number }) => void;
+    vi.mocked(resizeImage).mockImplementationOnce(() => new Promise((resolve) => { resolveResize = resolve; }));
+    const removed = { id: "removida", role: "product" as const, blob: new Blob(["old"], { type: "image/jpeg" }), name: "removida.jpg", type: "image/jpeg" as const, width: 1, height: 1, size: 1 };
+    const external = { id: "externa", role: "product" as const, blob: new Blob(["new"], { type: "image/jpeg" }), name: "externa.jpg", type: "image/jpeg" as const, width: 1, height: 1, size: 1 };
+    const view = render(<UploadField role="product" min={1} max={3} items={[removed]} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText(/fotos do produto/i), { target: { files: [new File(["x"], "processada.jpg", { type: "image/jpeg" })] } });
+    await waitFor(() => expect(resolveResize).toBeTypeOf("function"));
+    view.rerender(<UploadField role="product" min={1} max={3} items={[external]} onChange={onChange} />);
+    await waitFor(() => expect(screen.getByText(/externa.jpg/i)).toBeInTheDocument());
+    resolveResize({ blob: new Blob(["x"], { type: "image/jpeg" }), name: "processada.jpg", type: "image/jpeg", width: 1, height: 1, size: 1 });
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ name: "externa.jpg" }), expect.objectContaining({ name: "processada.jpg" })])));
+    expect(onChange.mock.lastCall?.[0].map((item: { name: string }) => item.name)).toEqual(["externa.jpg", "processada.jpg"]);
+  });
 });
