@@ -26,7 +26,7 @@ class MemoryRepository implements LibraryRepository {
   failActivateOnce = false;
   async getStatus() { return { active: this.active, previous: this.previous, staged: [...this.staged.values()] }; }
   async createStaged(input: LibraryVersionRecord) { this.staged.set(input.id, input); return input; }
-  async backfillJsonSha256() {}
+  async backfillJsonSha256(id: string, jsonSha256: string) { if (!this.active || this.active.id !== id) throw new Error("missing"); this.active = { ...this.active, jsonSha256 }; }
   async activate(id: string, promoted: { workbookPath: string; jsonPath: string }, now: Date) { if (this.failActivateOnce) { this.failActivateOnce = false; throw new Error("transaction"); } const staged = this.staged.get(id); if (!staged) throw new Error("missing"); const old = this.active; if (old) this.previous = { ...old, status: "PREVIOUS" }; this.active = { ...staged, ...promoted, status: "ACTIVE", activatedAt: now }; this.staged.delete(id); return { active: this.active, obsolete: [] }; }
   async rollback(now: Date): Promise<{ active: LibraryVersionRecord; previous: LibraryVersionRecord }> { if (!this.active || !this.previous) throw new Error("none"); const active: LibraryVersionRecord = { ...this.previous, status: "ACTIVE", activatedAt: now }; const previous: LibraryVersionRecord = { ...this.active, status: "PREVIOUS" }; this.active = active; this.previous = previous; return { active, previous }; }
 }
@@ -37,6 +37,10 @@ describe("LibraryService", () => {
     const service = new LibraryService(storage, repo, { parse: async () => { throw new Error("invalid"); } });
     await expect(service.stage({ filename: "bad.xlsx", bytes: Buffer.from("not xlsx") })).rejects.toThrow("invalid");
     expect((await service.getStatus()).active?.id).toBe("active");
+  });
+  it("backfills the missing JSON hash after validating a legacy active corpus", async () => {
+    const storage = new MemoryStorage(); const repo = new MemoryRepository(); const bytes = Buffer.from("legacy"); const active = { ...corpus("legacy"), sourceSha256: createHash("sha256").update(bytes).digest("hex") }; storage.active.set("legacy", active); repo.active = { id: "legacy", sourceFilename: "legacy.xlsx", sourceSha256: active.sourceSha256, jsonSha256: null, recordCount: 1, workbookPath: "versions/legacy.xlsx", jsonPath: "versions/legacy.json", status: "ACTIVE", validationSummary: {}, createdAt: new Date(), activatedAt: new Date() };
+    await expect(new LibraryService(storage, repo).getActiveSnapshot()).resolves.toMatchObject({ sourceSha256: active.sourceSha256 }); expect(repo.active.jsonSha256).toBe(createHash("sha256").update(serializeCorpus(active)).digest("hex"));
   });
 
   it("activates a staged version and rolls back to the previous version", async () => {
