@@ -1,3 +1,4 @@
+import "server-only";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 export type EncryptedSecret = { ciphertext: string; iv: string; tag: string; version: 1 };
@@ -16,14 +17,24 @@ export function encryptSecret(plain: string, key: Buffer): EncryptedSecret {
 }
 
 export function decryptSecret(payload: EncryptedSecret, key: Buffer): string {
-  assertKey(key);
-  if (payload.version !== 1) throw new Error("Não foi possível descriptografar a credencial.");
-
   try {
-    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(payload.iv, "base64"));
-    decipher.setAuthTag(Buffer.from(payload.tag, "base64"));
-    return Buffer.concat([decipher.update(Buffer.from(payload.ciphertext, "base64")), decipher.final()]).toString("utf8");
+    assertKey(key);
+    if (payload.version !== 1) throw new Error();
+    const ciphertext = decodeCanonicalBase64(payload.ciphertext);
+    const iv = decodeCanonicalBase64(payload.iv);
+    const tag = decodeCanonicalBase64(payload.tag);
+    if (iv.length !== 12 || tag.length !== 16) throw new Error();
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
   } catch {
     throw new Error("Não foi possível descriptografar a credencial.");
   }
+}
+
+function decodeCanonicalBase64(value: string): Buffer {
+  if (typeof value !== "string") throw new Error();
+  const decoded = Buffer.from(value, "base64");
+  if (decoded.toString("base64") !== value) throw new Error();
+  return decoded;
 }

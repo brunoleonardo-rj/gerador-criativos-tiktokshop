@@ -1,3 +1,4 @@
+import "server-only";
 import type { EncryptedSecret } from "./crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
 

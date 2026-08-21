@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@/generated/prisma/client";
 import type { EncryptedSecret } from "./crypto";
 import { PrismaSettingsRepository } from "./repository";
 
 describe("PrismaSettingsRepository", () => {
+  it("mantém o repositório Prisma no limite server-only", () => {
+    expect(readFileSync(path.resolve(process.cwd(), "src/features/settings/repository.ts"), "utf8")).toContain('import "server-only"');
+  });
+
   it("persiste apenas os campos criptografados e limpa todos ao remover a chave", async () => {
     const client = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: ":memory:" }) });
     await client.$executeRawUnsafe(`CREATE TABLE "AppSettings" (

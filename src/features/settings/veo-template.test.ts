@@ -25,4 +25,29 @@ describe("VEO template", () => {
     expect(output).toContain("Fala: Trecho um Trecho dois");
     expect(output).not.toMatch(/{{/);
   });
+
+  it("rejeita marcadores malformados e deduplica desconhecidos na ordem de aparição", () => {
+    expect(validateVeoTemplate("{{copy completa}} {{variavel_inventada}} {{copy completa}} {{}}")).toEqual({
+      valid: false,
+      unknown: ["copy completa", "variavel_inventada", ""],
+    });
+  });
+
+  it("não renderiza valores ausentes ou marcadores pendentes", () => {
+    const values = {
+      produto: "Body splash",
+      copy_completa: "Trecho um Trecho dois",
+      copy_trecho1: "Trecho um",
+      copy_trecho2: "Trecho dois",
+      pov: "✨ Cheiro de presença",
+      ambiente: "Quarto",
+      figurino: "Conjunto casual",
+      pose: "Em pé",
+      prompt_gemini: "PROMPT",
+    };
+
+    expect(() => renderVeoTemplate("{{produto", values)).toThrow();
+    expect(() => renderVeoTemplate("{{produto}}", { ...values, produto: undefined } as never)).toThrow();
+    expect(() => renderVeoTemplate("{{produto}}", { ...values, produto: "{{pendente}}" })).toThrow();
+  });
 });
