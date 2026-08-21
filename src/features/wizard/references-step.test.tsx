@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { ReferencesStep } from "./references-step";
 
 describe("ReferencesStep", () => {
@@ -8,4 +8,13 @@ describe("ReferencesStep", () => {
     expect(screen.getAllByText(/0 e 5 imagens/i)).toHaveLength(2);
     expect(screen.getByText(/1 e 8 imagens/i)).toBeInTheDocument();
   });
+
+  it("identifies missing references as requirements instead of a loading failure", () => {
+    render(<ReferencesStep profile="masculino" images={[]} loading={false} error={{ productRequired: true, ugcRequired: true }} onImagesChange={() => undefined} />);
+    expect(screen.getByText("Adicione ao menos uma foto do produto.")).toHaveAttribute("role", "alert");
+    expect(screen.getByText("Adicione ao menos uma foto da pessoa UGC.")).toHaveAttribute("role", "alert");
+    expect(screen.queryByText(/não foi possível carregar/i)).not.toBeInTheDocument();
+  });
 });
+
+afterEach(cleanup);

@@ -1,7 +1,7 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GenerationWizard, type WizardServices } from "./generation-wizard";
+import { GenerationWizard, fromDraft, toDraft, type WizardFormValues, type WizardServices } from "./generation-wizard";
 import { generationInputFixture } from "../../../tests/fixtures/creative-result";
 import { validateCreativeBatch } from "@/features/generation/validation";
 import { creativeBatchFixture } from "../../../tests/fixtures/creative-result";
@@ -15,6 +15,36 @@ function services(overrides: Partial<WizardServices> = {}): WizardServices {
 }
 
 describe("GenerationWizard", () => {
+  it("keeps optional partial draft fields when a required field is empty", () => {
+    const values: WizardFormValues = { nomeProduto: "", categoria: "Casa", descricaoPdp: "", avaliacoes: "Ótimas", notaMedia: "4.5", quantidadeAvaliacoes: "12", precoAtual: "R$ 20", precoAnterior: "R$ 30", especificacoesTexto: "Aço\n500 ml", publicoAlvo: "Adultos", perfilUgc: "", linkProduto: "https://example.com/p", quantidadeCriativos: "7", ambientesTexto: "cozinha\nquarto", politicaPreco: "teto_folgado", duracaoTotal: "30", povComEmoji: false, maxPalavrasPov: "9", quantidadeHashtags: "4", tomVoz: "direto" };
+    const draft = toDraft(values);
+    expect(draft).toMatchObject({ avaliacoes: "Ótimas", notaMedia: 4.5, quantidadeAvaliacoes: 12, precoAtual: "R$ 20", precoAnterior: "R$ 30", especificacoesCriticas: ["Aço", "500 ml"], publicoAlvo: "Adultos", linkProduto: "https://example.com/p", quantidadeCriativos: 7, ambientesPermitidos: ["cozinha", "quarto"], duracaoTotal: 30 });
+    expect(fromDraft(draft)).toMatchObject({ ...values, nomeProduto: "", descricaoPdp: "", perfilUgc: "" });
+  });
+
+  it("flushes the latest partial draft when unmounted before the debounce", async () => {
+    vi.useFakeTimers(); const saveDraft = vi.fn();
+    const view = render(<GenerationWizard services={services({ saveDraft })} />);
+    fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Rascunho" } });
+    await vi.advanceTimersByTimeAsync(299); expect(saveDraft).not.toHaveBeenCalled();
+    view.unmount(); expect(saveDraft).toHaveBeenLastCalledWith(expect.objectContaining({ nomeProduto: "Rascunho" })); vi.useRealTimers();
+  });
+
+  it("persists once at exactly 300ms, never at 299ms", async () => {
+    vi.useFakeTimers(); const saveDraft = vi.fn();
+    render(<GenerationWizard services={services({ saveDraft })} />);
+    fireEvent.change(screen.getByLabelText("Nome do produto"), { target: { value: "Cronômetro" } });
+    await vi.advanceTimersByTimeAsync(299); expect(saveDraft).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1); expect(saveDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a late image load after unmount", async () => {
+    let resolveImages!: (images: []) => void; const listImages = vi.fn(() => new Promise<[]>((resolve) => { resolveImages = resolve; }));
+    const view = render(<GenerationWizard services={services({ listImages })} />); view.unmount();
+    await act(async () => { resolveImages([]); });
+    expect(listImages).toHaveBeenCalledOnce();
+  });
+
   it("restores a draft without persisting defaults over it and blocks the required product name", async () => {
     const saveDraft = vi.fn();
     render(<GenerationWizard services={services({ saveDraft })} />);
@@ -41,4 +71,4 @@ describe("GenerationWizard", () => {
   });
 });
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
