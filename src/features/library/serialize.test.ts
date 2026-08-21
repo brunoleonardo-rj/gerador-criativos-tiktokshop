@@ -6,7 +6,7 @@ const corpusFixture: LibraryCorpus = {
   schemaVersion: 1, sourceSha256: "a".repeat(64),
   summary: { recordCount: 1, products: { "Body splash": 1 }, mechanisms: { "Depoimento pessoal": 1 }, statuses: { "Copy falada": 1 } },
   playbook: ["Regra"], hashtagPatterns: ["#teste"],
-  creatives: [{ id: "1", produto: "Body splash", status: "Copy falada", confianca: "Alta", mecanismo: "Depoimento pessoal", tipoHook: "Declaração", hook: "Hook", corpo: null, prova: null, objecao: null, oferta: null, tipoCta: "Carrinho", cta: null, descricao: null, hashtags: ["#teste"], formulaAdaptavel: null, risco: "Baixo", notas: "", url: null }],
+  creatives: [{ numero: "1", id: "1", autor: "", produto: "Body splash", duracao: "10 segundos", status: "Copy falada", confianca: "Alta", mecanismo: "Depoimento pessoal", tipoHook: "Declaração", hook: "Hook", corpo: null, prova: null, objecao: null, oferta: null, tipoCta: "Carrinho", cta: null, descricao: null, hashtags: ["#teste"], formulaAdaptavel: null, risco: "Baixo", notas: "", url: null, arquivoFonte: null }],
 };
 
 describe("serializeCorpus", () => {

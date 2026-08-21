@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 export const libraryCreativeSchema = z.object({
-  id: z.string().min(1), produto: z.string().min(1), status: z.string(), confianca: z.string(),
+  numero: z.string().min(1), id: z.string().min(1), autor: z.string(), produto: z.string().min(1), duracao: z.string(), status: z.string(), confianca: z.string(),
   mecanismo: z.string().min(1), tipoHook: z.string(), hook: z.string().nullable(), corpo: z.string().nullable(),
   prova: z.string().nullable(), objecao: z.string().nullable(), oferta: z.string().nullable(), tipoCta: z.string(),
   cta: z.string().nullable(), descricao: z.string().nullable(), hashtags: z.array(z.string()),
-  formulaAdaptavel: z.string().nullable(), risco: z.string(), notas: z.string(), url: z.string().nullable(),
+  formulaAdaptavel: z.string().nullable(), risco: z.string(), notas: z.string(), url: z.string().nullable(), arquivoFonte: z.string().nullable(),
 }).strict();
 
 export const libraryCorpusSchema = z.object({
