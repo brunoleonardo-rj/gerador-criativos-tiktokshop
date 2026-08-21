@@ -73,4 +73,14 @@ describe("validação editorial", () => {
     const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ promptGemini }), "{{copy_completa}}");
     expect(report.creatives[0].issues.map((issue) => issue.code)).not.toContain("VISUAL_OVERLAY_FORBIDDEN");
   });
+  it.each(["Add captions, no people visible", "Add captions with no human subject", "Do not add captions but show price tags"]) ("não deixa uma negativa não relacionada ocultar diretiva: %s", (directive) => {
+    const promptGemini = `${creativeBatchFixture().creatives[0].promptGemini}\n${directive}`;
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ promptGemini }), "{{copy_completa}}");
+    expect(report.creatives[0].issues.map((issue) => issue.code)).toContain("VISUAL_OVERLAY_FORBIDDEN");
+  });
+  it.each(["Do not add text overlays", "No captions or subtitles", "Add no captions", "Nunca mostrar texto na tela", "Sem legendas"]) ("aceita negativa que governa a diretiva ou alvo: %s", (directive) => {
+    const promptGemini = `${creativeBatchFixture().creatives[0].promptGemini}\n${directive}`;
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ promptGemini }), "{{copy_completa}}");
+    expect(report.creatives[0].issues.map((issue) => issue.code)).not.toContain("VISUAL_OVERLAY_FORBIDDEN");
+  });
 });

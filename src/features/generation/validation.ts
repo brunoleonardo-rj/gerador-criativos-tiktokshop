@@ -29,10 +29,15 @@ const segmentRules: Record<number, { seconds: number[]; words: Record<number, [n
 };
 const normalizeKey = (value: string) => value.normalize("NFC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("pt-BR").normalize("NFD").replace(/\p{M}/gu, "");
 const hasAffirmativeVisualOverlay = (prompt: string): boolean => {
-  const target = /\b(?:texto\s+na\s+tela|text\s+overlays?|on-screen\s+text|captions?|subtitles?|floating\s+labels?|price\s+tags?|setas?|arrows?|stickers?|emojis?|ui|interface|cards?|graphics?)\b/iu;
-  const directive = /\b(?:adicione|adicionar|add|show|render|insert|insira|display|exiba|mostrar|mostre|inclua|include|use)\b/iu;
-  const negative = /\b(?:no|without|sem|não|nao|never|nunca|não\s+adicionar|nao\s+adicionar)\b/iu;
-  return prompt.split(/[\n.!?]+/u).some((clause) => target.test(clause) && directive.test(clause) && !negative.test(clause));
+  const text = normalizeKey(prompt);
+  const directiveTarget = /\b(?:add(?:ing)?|show(?:ing)?|display(?:ing)?|render(?:ing)?|insert(?:ing)?|include(?:ing)?|generate(?:ing)?|place|placing|create|creating|adicione|adicionar|adicionando|mostre|mostrar|mostrando|exiba|exibir|insira|inserir|inclua|incluir|gere|gerar|coloque|colocar|crie|criar)\b(?:(?![.!?;\n])[\s\S]){0,50}?\b(?:overlays?|texto\s+na\s+tela|text\s+overlays?|on-screen\s+text|captions?|subtitles?|floating\s+labels?|price\s+tags?|setas?|arrows?|stickers?|emojis?|ui|interface|cards?|graphics?)\b/gu;
+  const immediatelyNegated = /(?:\bdo\s+not|\bdon't|\bnever|\bavoid|\bnao|\bnunca|\bsem)\s*$/u;
+  const negativeTarget = /\b(?:add(?:ing)?|show(?:ing)?|display(?:ing)?|render(?:ing)?|insert(?:ing)?|include(?:ing)?|generate(?:ing)?|place|placing|create|creating|adicione|adicionar|adicionando|mostre|mostrar|mostrando|exiba|exibir|insira|inserir|inclua|incluir|gere|gerar|coloque|colocar|crie|criar)\b\s+(?:no|without|sem)\b/iu;
+  for (const match of text.matchAll(directiveTarget)) {
+    const before = text.slice(0, match.index).trimEnd();
+    if (!immediatelyNegated.test(before) && !negativeTarget.test(match[0])) return true;
+  }
+  return false;
 };
 
 export function validateCreativeBatch(input: GenerationInput, batch: CreativeBatch, veoTemplate: string, settingsUpdatedAt: string | null = null): GenerationEnvelope {
