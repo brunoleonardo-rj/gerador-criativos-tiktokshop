@@ -9,3 +9,4 @@
 /src/generated/prisma/
 /test-results/
 /playwright-report/
+*.tsbuildinfo
