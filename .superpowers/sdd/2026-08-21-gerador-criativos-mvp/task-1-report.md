@@ -44,3 +44,25 @@ Após a implementação, o comando de testes informou `Test Files 2 passed (2)` 
 - O pnpm 11 emite um aviso deprecatando `pnpm.onlyBuiltDependencies`, mas a entrada literal exigida permanece no `package.json`. `pnpm-workspace.yaml` desabilita a verificação automática de dependências antes de scripts para que os comandos definidos possam rodar sob essa versão.
 - O Vitest 4 emite aviso informativo sobre `__dirname` no arquivo de configuração ESM; os testes passam. O formato de configuração solicitado foi preservado.
 - A remoção do diretório temporário `..\\gerador-criativos-scaffold` foi bloqueada pela política do executor, apesar de o alvo ter sido conferido explicitamente; ele permanece fora deste worktree.
+
+## Fix round 1/5 — segredos de exemplo, Base64 e engine Node
+
+### Implementação
+
+- Substituídos os valores públicos e válidos de `.env.example` por placeholders inválidos: usuário vazio e segredos `REPLACE_ME`. Uma cópia do exemplo não passa na validação até que todos os segredos sejam definidos pelo operador.
+- A validação de `SETTINGS_ENCRYPTION_KEY` exige agora Base64 canônico (alfabeto, agrupamento e padding corretos) e 32 bytes depois da decodificação.
+- Adicionado `engines.node: ">=20.19.0"` no `package.json`.
+
+### Cobertura e evidência RED/GREEN
+
+- Novo teste `rejeita Base64 não canônico mesmo quando decodifica para 32 bytes`: no RED, o valor com `!` inicial era aceito porque `Buffer.from` ignorava o caractere. No GREEN, foi rejeitado pela expressão de Base64 canônico.
+- Novo teste `rejeita o exemplo de ambiente até que os segredos sejam substituídos`: no RED, o exemplo era aceito integralmente; no GREEN, passou a falhar a validação como esperado.
+- O teste já existente `aceita uma configuração completa` mantém o caminho válido coberto.
+
+| Comando | Resultado |
+| --- | --- |
+| `pnpm test src/lib/env.test.ts` | RED: 2 falhas esperadas; GREEN: 4 testes aprovados |
+| `node -e "const packageJson = require('./package.json'); if (packageJson.engines?.node !== '>=20.19.0') process.exit(1); console.log(packageJson.engines.node)"` | aprovou e imprimiu `>=20.19.0` |
+| `pnpm test src/lib/env.test.ts src/app/api/health/route.test.ts` | 2 arquivos e 5 testes aprovados |
+| `pnpm lint` | aprovou sem erros |
+| `pnpm build` | aprovou; incluiu `/api/health` |
