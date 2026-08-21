@@ -11,4 +11,9 @@ describe("schema de geração", () => {
     expect(() => creativeBatchSchema.parse(creativeBatchFixture())).not.toThrow();
     expect(() => creativeBatchSchema.parse(creativeBatchFixture({ copy: { ...creativeBatchFixture().creatives[0].copy, trecho3: "não" } }))).toThrow();
   });
+  it("exige motivo de descarte coerente", () => {
+    expect(() => creativeBatchSchema.parse(creativeBatchFixture({ descartavel: true, motivoDescartavel: null }))).toThrow();
+    expect(() => creativeBatchSchema.parse(creativeBatchFixture({ descartavel: false, motivoDescartavel: "motivo" }))).toThrow();
+    expect(() => creativeBatchSchema.parse(creativeBatchFixture({ descartavel: true, motivoDescartavel: "Repetição editorial." }))).not.toThrow();
+  });
 });

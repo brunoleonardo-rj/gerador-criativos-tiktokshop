@@ -23,7 +23,10 @@ export const creativeSchema = z.object({
   textoNaTela: z.string().trim().max(500).nullable(),
   descartavel: z.boolean(),
   motivoDescartavel: z.string().trim().min(1).max(1_000).nullable(),
-}).strict();
+}).strict().superRefine((creative, context) => {
+  if (creative.descartavel && !creative.motivoDescartavel) context.addIssue({ code: "custom", path: ["motivoDescartavel"], message: "Motivo é obrigatório quando o criativo é descartável." });
+  if (!creative.descartavel && creative.motivoDescartavel !== null) context.addIssue({ code: "custom", path: ["motivoDescartavel"], message: "Motivo deve ser nulo quando o criativo não é descartável." });
+});
 
 export const creativeBatchSchema = z.object({
   produtoNormalizado: shortText,

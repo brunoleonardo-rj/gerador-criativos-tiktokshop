@@ -43,4 +43,34 @@ describe("validação editorial", () => {
     expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "VEO_TEMPLATE_INVALID", severity: "block" }));
     expect(JSON.stringify(report)).not.toContain("apiKey");
   });
+  it("bloqueia contagem de criativos diferente da solicitada", () => {
+    const report = validateCreativeBatch(generationInputFixture({ quantidadeCriativos: 2 }), creativeBatchFixture(), "{{copy_completa}}");
+    expect(report.batchIssues).toContainEqual(expect.objectContaining({ code: "CREATIVE_COUNT", severity: "block", field: "creatives" }));
+    expect(report.status).toBe("blocked");
+  });
+  it("aceita ambiente permitido com NFC, espaços, caixa e acento diferentes", () => {
+    const report = validateCreativeBatch(generationInputFixture({ ambientesPermitidos: ["  CAFE\u0301   DA MANHÃ "] }), creativeBatchFixture({ ambiente: "café da manhã" }), "{{copy_completa}}");
+    expect(report.creatives[0].issues.map((issue) => issue.code)).not.toContain("ENVIRONMENT_NOT_ALLOWED");
+  });
+  it("bloqueia ambiente fora da lista", () => {
+    const report = validateCreativeBatch(generationInputFixture({ ambientesPermitidos: ["cozinha"] }), creativeBatchFixture({ ambiente: "quarto" }), "{{copy_completa}}");
+    expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "ENVIRONMENT_NOT_ALLOWED", severity: "block", field: "ambiente" }));
+  });
+  it("sinaliza criativo marcado descartável para revisão", () => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ descartavel: true, motivoDescartavel: "Repetição editorial." }), "{{copy_completa}}");
+    expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "CREATIVE_DISCARDED", severity: "warning", field: "motivoDescartavel", message: expect.stringContaining("Repetição") }));
+    expect(report.creatives[0].status).toBe("needs_review");
+  });
+  it.each(["US$ 10", "$ 15.99", "€20", "£ 9", "¥ 300", "GBP 4.50", "JPY 500", "10 dólares", "euro 3", "5 libras", "20 ienes", "50 centavos"]) ("detecta dinheiro em forma comum: %s", (text) => expect(containsMoney(text)).toBe(true));
+  it.each(["modelo 2026", "500 ml", "2 kg", "128 GB", "3 unidades"]) ("não confunde medida ou contagem: %s", (text) => expect(containsMoney(text)).toBe(false));
+  it.each(["Adicione texto na tela", "Show captions", "Render a price tag", "insira setas e stickers", "Display a floating label", "add UI cards and graphics"]) ("bloqueia overlay afirmativo: %s", (directive) => {
+    const promptGemini = `${creativeBatchFixture().creatives[0].promptGemini}\n${directive}`;
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ promptGemini }), "{{copy_completa}}");
+    expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "VISUAL_OVERLAY_FORBIDDEN", severity: "block", field: "promptGemini" }));
+  });
+  it.each(["Restrições: sem texto na tela", "Restrictions: no text overlays", "without captions", "não adicionar overlays"]) ("não bloqueia restrição negativa de overlay: %s", (directive) => {
+    const promptGemini = `${creativeBatchFixture().creatives[0].promptGemini}\n${directive}`;
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ promptGemini }), "{{copy_completa}}");
+    expect(report.creatives[0].issues.map((issue) => issue.code)).not.toContain("VISUAL_OVERLAY_FORBIDDEN");
+  });
 });

@@ -4,10 +4,11 @@ import { creativeBatchSchema, generationInputSchema, type CreativeBatch, type Ge
 export type IssueSeverity = "warning" | "block";
 export type GenerationIssue = { code: string; severity: IssueSeverity; field: string; message: string };
 export type CreativeEnvelope = CreativeBatch["creatives"][number] & { veoPrompt: string | null; actualCounts: { trecho1: number; trecho2: number; trecho3: number | null; pov: number }; issues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked" };
-export type GenerationEnvelope = Omit<CreativeBatch, "creatives"> & { creatives: CreativeEnvelope[]; status: "valid" | "needs_review" | "blocked"; settingsUpdatedAt: string | null };
+export type GenerationEnvelope = Omit<CreativeBatch, "creatives"> & { creatives: CreativeEnvelope[]; batchIssues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked"; settingsUpdatedAt: string | null };
 
 const GEMINI_BLOCKS = ["Cenário", "Pessoa", "Produto", "Ação", "Enquadramento", "Iluminação", "Áudio", "Estilo", "Restrições"] as const;
-const MONEY = /(?:R\$\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\b(?:BRL|USD|EUR)\s*\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?|\b\d+(?:\.\d{3})*(?:,\d{2})?\s*(?:reais?|real)\b|\b(?:reais?|real)\s*\d+(?:\.\d{3})*(?:,\d{2})?\b)/iu;
+const AMOUNT = "(?:\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?|\\d+)";
+const MONEY = new RegExp(`(?:(?:US\\$|R\\$|\\$|€|£|¥)\\s*${AMOUNT}|${AMOUNT}\\s*(?:US\\$|R\\$|\\$|€|£|¥)|\\b(?:BRL|USD|EUR|GBP|JPY)\\s*${AMOUNT}\\b|\\b${AMOUNT}\\s*(?:BRL|USD|EUR|GBP|JPY)\\b|\\b${AMOUNT}\\s*(?:reais?|real|dólares?|dolares?|euros?|libras?|ienes?|centavos?)\\b|\\b(?:reais?|real|dólares?|dolares?|euros?|libras?|ienes?|centavos?)\\s*${AMOUNT}\\b)`, "iu");
 const EMOJI = /\p{Extended_Pictographic}/gu;
 const WORD = /[\p{L}\p{N}]+(?:[’'\-][\p{L}\p{N}]+)*/gu;
 
@@ -17,7 +18,7 @@ export function countEmoji(text: string): number {
   if (Segmenter) return [...new Segmenter(undefined, { granularity: "grapheme" }).segment(text)].filter(({ segment }) => /\p{Extended_Pictographic}/u.test(segment)).length;
   return [...text.matchAll(EMOJI)].length;
 }
-export function containsMoney(text: string): boolean { return MONEY.test(text); }
+export function containsMoney(text: string): boolean { return MONEY.test(text.normalize("NFC")); }
 export function requiredGeminiBlocks(prompt: string): string[] { return GEMINI_BLOCKS.filter((block) => !new RegExp(`(?:^|\\n)\\s*${block}\\s*:`, "iu").test(prompt)); }
 
 const add = (issues: GenerationIssue[], code: string, severity: IssueSeverity, field: string, message: string) => issues.push({ code, severity, field, message });
@@ -26,12 +27,21 @@ const segmentRules: Record<number, { seconds: number[]; words: Record<number, [n
   20: { seconds: [10, 10], words: { 10: [18, 28] } },
   30: { seconds: [10, 10, 10], words: { 10: [18, 28] } },
 };
-const normalizeKey = (value: string) => value.trim().toLocaleLowerCase("pt-BR");
+const normalizeKey = (value: string) => value.normalize("NFC").trim().replace(/\s+/gu, " ").toLocaleLowerCase("pt-BR").normalize("NFD").replace(/\p{M}/gu, "");
+const hasAffirmativeVisualOverlay = (prompt: string): boolean => {
+  const target = /\b(?:texto\s+na\s+tela|text\s+overlays?|on-screen\s+text|captions?|subtitles?|floating\s+labels?|price\s+tags?|setas?|arrows?|stickers?|emojis?|ui|interface|cards?|graphics?)\b/iu;
+  const directive = /\b(?:adicione|adicionar|add|show|render|insert|insira|display|exiba|mostrar|mostre|inclua|include|use)\b/iu;
+  const negative = /\b(?:no|without|sem|não|nao|never|nunca|não\s+adicionar|nao\s+adicionar)\b/iu;
+  return prompt.split(/[\n.!?]+/u).some((clause) => target.test(clause) && directive.test(clause) && !negative.test(clause));
+};
 
 export function validateCreativeBatch(input: GenerationInput, batch: CreativeBatch, veoTemplate: string, settingsUpdatedAt: string | null = null): GenerationEnvelope {
   const safeInput = generationInputSchema.parse(input);
   const safeBatch = creativeBatchSchema.parse(batch);
   const expected = segmentRules[safeInput.duracaoTotal];
+  const batchIssues: GenerationIssue[] = [];
+  if (safeBatch.creatives.length !== safeInput.quantidadeCriativos) add(batchIssues, "CREATIVE_COUNT", "block", "creatives", "A quantidade de criativos diverge da configuração.");
+  const allowedEnvironments = new Set(safeInput.ambientesPermitidos.map(normalizeKey));
   const seenEnvironment = new Set<string>(); const seenHashtags = new Set<string>(); const seenTriples = new Set<string>();
   const creatives = safeBatch.creatives.map((creative) => {
     const issues: GenerationIssue[] = [];
@@ -56,6 +66,7 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     const hashtagKey = creative.hashtags.map(normalizeKey).sort().join("|");
     if (seenHashtags.has(hashtagKey)) add(issues, "HASHTAGS_REPEATED", "warning", "hashtags", "O conjunto de hashtags se repete."); else seenHashtags.add(hashtagKey);
     const environmentKey = normalizeKey(creative.ambiente);
+    if (!allowedEnvironments.has(environmentKey)) add(issues, "ENVIRONMENT_NOT_ALLOWED", "block", "ambiente", "O ambiente não pertence à lista permitida.");
     if (seenEnvironment.has(environmentKey)) add(issues, "ENVIRONMENT_REPEATED", "warning", "ambiente", "O ambiente se repete."); else seenEnvironment.add(environmentKey);
     const triple = `${environmentKey}|${normalizeKey(creative.pose)}|${hashtagKey}`;
     if (seenTriples.has(triple)) add(issues, "CREATIVE_DUPLICATE", "block", "creative", "Ambiente, pose e hashtags repetidos simultaneamente."); else seenTriples.add(triple);
@@ -63,6 +74,8 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     if (creative.pov.palavras !== actualPov) add(issues, "POV_DECLARED_WORDS", "warning", "pov.palavras", "A contagem declarada diverge da contagem real.");
     if (actualPov > safeInput.maxPalavrasPov) add(issues, "POV_WORDS", "warning", "pov.texto", "O POV ultrapassa o limite configurado.");
     if (safeInput.povComEmoji && (countEmoji(creative.pov.texto) !== 1 || countEmoji(creative.pov.emoji) !== 1)) add(issues, "POV_EMOJI", "warning", "pov", "O POV deve conter exatamente um emoji.");
+    if (creative.descartavel) add(issues, "CREATIVE_DISCARDED", "warning", "motivoDescartavel", `Criativo marcado como descartável: ${creative.motivoDescartavel}`);
+    if (hasAffirmativeVisualOverlay(creative.promptGemini)) add(issues, "VISUAL_OVERLAY_FORBIDDEN", "block", "promptGemini", "O Prompt Gemini não pode instruir overlays ou gráficos visuais.");
     let veoPrompt: string | null = null;
     try { veoPrompt = renderVeoTemplate(veoTemplate, { produto: safeBatch.produtoNormalizado, copy_completa: segments.filter((segment): segment is NonNullable<typeof segment> => segment !== null).map((segment) => segment.texto).join(" "), copy_trecho1: creative.copy.trecho1.texto, copy_trecho2: creative.copy.trecho2.texto, pov: creative.pov.texto, ambiente: creative.ambiente, figurino: creative.figurino, pose: creative.pose, prompt_gemini: creative.promptGemini }); }
     catch { add(issues, "VEO_TEMPLATE_INVALID", "block", "veoPrompt", "O template VEO possui variável inválida ou não resolvida."); }
@@ -70,6 +83,6 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     const status: CreativeEnvelope["status"] = issues.some((issue) => issue.severity === "block") ? "blocked" : issues.length ? "needs_review" : "valid";
     return { ...creative, veoPrompt, actualCounts, issues, status };
   });
-  const status = creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
-  return { ...safeBatch, creatives, status, settingsUpdatedAt };
+  const status = batchIssues.some((issue) => issue.severity === "block") || creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
+  return { ...safeBatch, creatives, batchIssues, status, settingsUpdatedAt };
 }
