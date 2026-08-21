@@ -1,2 +1,11 @@
 .worktrees/
 .superpowers/
+/node_modules/
+/.next/
+/out/
+.env*
+!.env.example
+/data/
+/src/generated/prisma/
+/test-results/
+/playwright-report/
