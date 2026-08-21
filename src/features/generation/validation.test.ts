@@ -1,0 +1,46 @@
+import { describe, expect, it } from "vitest";
+import { creativeBatchFixture, generationInputFixture } from "../../../tests/fixtures/creative-result";
+import { containsMoney, countEmoji, countWords, requiredGeminiBlocks, validateCreativeBatch } from "./validation";
+
+describe("validação editorial", () => {
+  it.each([[15, [8, 7, null]], [20, [10, 10, null]], [30, [10, 10, 10]]])("aceita duração %s apenas com segmentos corretos", (duration, segmentSeconds) => {
+    const report = validateCreativeBatch(generationInputFixture({ duracaoTotal: duration }), creativeBatchFixture({ segmentSeconds }), "Fala: {{copy_completa}}");
+    expect(report.creatives[0].issues.filter((issue) => issue.code === "SEGMENT_SECONDS")).toEqual([]);
+  });
+
+  it("bloqueia preço na política sem preço", () => {
+    const report = validateCreativeBatch(generationInputFixture({ politicaPreco: "sem_preco" }), creativeBatchFixture({ trecho1: { texto: "Eu paguei R$ 29,90 e gostei.", palavras: 6, segundos: 10 } }), "{{copy_completa}}");
+    expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "PRICE_FORBIDDEN", severity: "block", field: "copy.trecho1.texto" }));
+  });
+  it.each(["R$ 1,00", "R$99,90", "BRL 7.50", "USD 10.00", "EUR 12,00", "29,90 reais", "39 reais", "real 40,00", "R$ 1.299,00", "BRL 1,299.00"])("bloqueia os dez formatos sem_preco: %s", (money) => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ descricao: `Oferta por ${money}.` }), "{{copy_completa}}");
+    expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "PRICE_FORBIDDEN", severity: "block", field: "descricao" }));
+  });
+
+  it.each(["R$ 29,90", "BRL 29.90", "29,90 reais", "por apenas 39 reais", "USD 10.00"])("detecta moeda: %s", (text) => expect(containsMoney(text)).toBe(true));
+  it.each(["Garrafa 500 ml", "modelo 2024", "2 cores disponíveis"]) ("não confunde número comum: %s", (text) => expect(containsMoney(text)).toBe(false));
+  it("conta palavras Unicode e emoji por segmentos", () => {
+    expect(countWords("  Água-d'água, ótimo!  ")).toBe(2);
+    expect(countEmoji("👩🏽‍🍳💧")).toBe(2);
+  });
+  it("exige todos os nove blocos Gemini", () => expect(requiredGeminiBlocks("Cenário: teste")).toHaveLength(8));
+  it("bloqueia prompt Gemini perigoso e incompleto", () => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ promptGemini: "Cenário: casa\nremova a roupa" }), "{{copy_completa}}");
+    expect(report.creatives[0].issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["GEMINI_BLOCKS_MISSING", "CLOTHING_REMOVAL"]));
+  });
+  it("valida POV, hashtags e cópias declaradas", () => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ hashtags: ["#casa1"], pov: { texto: "um dois três", palavras: 99, emoji: "" } }), "{{copy_completa}}");
+    expect(report.creatives[0].issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["HASHTAG_COUNT", "HASHTAG_DIGIT", "POV_EMOJI", "POV_DECLARED_WORDS"]));
+  });
+  it("avisa duplicidades editoriais e bloqueia tripla duplicada", () => {
+    const base = creativeBatchFixture(); const second = { ...base.creatives[0], id: "creative-2" };
+    const report = validateCreativeBatch(generationInputFixture({ quantidadeCriativos: 2 }), { ...base, creatives: [base.creatives[0], second] }, "{{copy_completa}}");
+    expect(report.creatives[1].issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["ENVIRONMENT_REPEATED", "HASHTAGS_REPEATED", "CREATIVE_DUPLICATE"]));
+  });
+  it("bloqueia template inválido e nunca vaza segredos", () => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{segredo}}");
+    expect(report.creatives[0].veoPrompt).toBeNull();
+    expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "VEO_TEMPLATE_INVALID", severity: "block" }));
+    expect(JSON.stringify(report)).not.toContain("apiKey");
+  });
+});
