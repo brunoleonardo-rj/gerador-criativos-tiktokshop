@@ -45,7 +45,7 @@ Ficam fora do MVP:
 
 ## Arquitetura
 
-A aplicação será criada em `D:\Projetos\TiktokShop\gerador-criativos` usando Next.js 16+, TypeScript, App Router, Tailwind CSS e componentes shadcn/ui. O runtime mínimo de produção será Node.js 20.9, conforme o requisito atual do Next.js, e o build usará `output: "standalone"`.
+A aplicação será criada em `D:\Projetos\TiktokShop\gerador-criativos` usando Next.js 16+, TypeScript, App Router, Tailwind CSS e componentes shadcn/ui. O runtime mínimo de produção será Node.js 20.19, atendendo simultaneamente aos requisitos atuais do Next.js e do Prisma 7, e o build usará `output: "standalone"`.
 
 O projeto não usará servidor customizado. O servidor integrado do Next.js fornecerá páginas, Route Handlers e o arquivo mínimo de produção. A publicação no aaPanel deverá compilar o projeto no próprio host Linux ou em ambiente Linux compatível, para evitar transportar binários nativos de SQLite gerados no Windows.
 
@@ -214,7 +214,7 @@ Configurações:
 - quantidade de criativos, de um a oito, default cinco;
 - ambientes permitidos;
 - política de preço: sem preço, teto folgado ou preço exato com aviso;
-- duração: 20 segundos em duas cenas, 15 segundos ou 30 segundos em três cenas;
+- duração: 20 segundos em duas cenas de 10 segundos, 15 segundos em duas cenas de 8 e 7 segundos, ou 30 segundos em três cenas de 10 segundos;
 - POV com emoji;
 - máximo de palavras do POV, default 11;
 - quantidade de hashtags, default cinco;
@@ -301,6 +301,8 @@ O contrato estruturado continuará contendo:
 
 O schema da resposta terá `additionalProperties: false` em todos os objetos. Zod representará o mesmo contrato no código e fará validação defensiva adicional.
 
+`copy` terá `trecho1`, `trecho2` e `trecho3`. Os dois primeiros serão sempre objetos; `trecho3` será objeto somente na duração de 30 segundos e `null` nas durações de 15 e 20 segundos. Cada trecho informará texto, contagem declarada e segundos. O servidor exigirá que os segundos correspondam exatamente a 8+7, 10+10 ou 10+10+10 conforme a configuração.
+
 ### Caching
 
 O sistema colocará conteúdo estável no início do prompt. O bloco estável da biblioteca filtrada receberá um cache breakpoint explícito com `cache_control: { type: "ephemeral" }`. Dados do produto e imagens virão depois do conteúdo cacheável.
@@ -343,7 +345,7 @@ O servidor recalculará todas as contagens. Valores informados pelo modelo são 
 
 - POV acima do limite configurado;
 - POV sem exatamente um emoji quando o emoji estiver habilitado;
-- trecho de copy fora de 18 a 28 palavras;
+- trecho de 10 segundos fora de 18 a 28 palavras, com limites proporcionais de 14 a 22 palavras para 8 segundos e 13 a 20 para 7 segundos;
 - divergência relevante entre contagem do modelo e contagem real;
 - conjunto de hashtags repetido;
 - ambiente repetido;
@@ -459,7 +461,7 @@ Os testes não chamarão a API real. O cliente Anthropic será injetável e subs
 
 A documentação de implantação posterior deverá exigir:
 
-- Node.js 20.9 ou superior;
+- Node.js 20.19 ou superior;
 - diretório persistente e gravável para `DATA_DIR`;
 - todas as variáveis de ambiente de autenticação e criptografia;
 - proxy reverso com HTTPS;
