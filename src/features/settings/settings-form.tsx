@@ -33,13 +33,14 @@ const previewValues: VeoVariables = {
   prompt_gemini: "Vídeo UGC vertical, luz natural e demonstração do produto.",
 };
 
-async function defaultSave(input: SettingsUpdate) {
+async function defaultSave(input: SettingsUpdate): Promise<PublicSettingsView> {
   const response = await fetch("/api/settings", {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(input),
   });
   if (!response.ok) throw new Error("Não foi possível salvar as configurações");
+  return response.json();
 }
 
 async function defaultDeleteKey() {
@@ -49,9 +50,10 @@ async function defaultDeleteKey() {
 
 export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defaultDeleteKey }: {
   initial: PublicSettingsView;
-  onSave?: (input: SettingsUpdate) => Promise<void> | void;
-  onDeleteKey?: () => Promise<void> | void;
+  onSave?: (input: SettingsUpdate) => Promise<PublicSettingsView | void> | PublicSettingsView | void;
+  onDeleteKey?: () => Promise<PublicSettingsView | void> | PublicSettingsView | void;
 }) {
+  const [settings, setSettings] = useState(initial);
   const [activeTab, setActiveTab] = useState<Tab>("credential");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(initial.model);
@@ -90,7 +92,14 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
     setIsSaving(true);
     setStatus(null);
     try {
-      await onSave({ model: model.trim(), veoTemplate: veoTemplate.trim(), ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) });
+      const saved = await onSave({ model: model.trim(), veoTemplate: veoTemplate.trim(), ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) });
+      if (saved) {
+        setSettings(saved);
+        setModel(saved.model);
+        setVeoTemplate(saved.veoTemplate);
+      } else {
+        setSettings((current) => ({ ...current, model: model.trim(), veoTemplate: veoTemplate.trim() }));
+      }
       setApiKey("");
       setStatus("Configurações salvas.");
     } catch {
@@ -104,7 +113,8 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
     setIsSaving(true);
     setStatus(null);
     try {
-      await onDeleteKey();
+      const deleted = await onDeleteKey();
+      setSettings(deleted ?? ((current) => ({ ...current, apiKeyConfigured: false, apiKeyMask: null })));
       setApiKey("");
       setStatus("Credencial removida.");
     } catch {
@@ -129,11 +139,11 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
 
       <section role="tabpanel" id="settings-panel-credential" aria-labelledby="settings-tab-credential" hidden={activeTab !== "credential"} className="grid gap-4 py-6 text-[#514955]">
         <h2>Credencial Anthropic</h2>
-        <p>{initial.apiKeyConfigured ? "Chave configurada:" : "Nenhuma chave configurada."} {initial.apiKeyMask && <strong>{initial.apiKeyMask}</strong>}</p>
+        <p>{settings.apiKeyConfigured ? "Chave configurada:" : "Nenhuma chave configurada."} {settings.apiKeyMask && <strong>{settings.apiKeyMask}</strong>}</p>
         <label htmlFor="api-key">Nova chave da Anthropic</label>
         <input id="api-key" name="apiKey" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} autoComplete="new-password" placeholder="Substitua a chave, se necessário" />
         <p className="text-sm text-[#665e68]">Deixe em branco para manter a chave salva. A chave atual nunca é exibida.</p>
-        {initial.apiKeyConfigured && <button type="button" className="w-fit rounded-lg px-3 py-2 text-sm font-semibold text-[#b42318] hover:bg-[#fff1f0]" disabled={isSaving} onClick={deleteKey}>Remover credencial</button>}
+        {settings.apiKeyConfigured && <button type="button" className="w-fit rounded-lg px-3 py-2 text-sm font-semibold text-[#b42318] hover:bg-[#fff1f0]" disabled={isSaving} onClick={deleteKey}>Remover credencial</button>}
       </section>
 
       <section role="tabpanel" id="settings-panel-model" aria-labelledby="settings-tab-model" hidden={activeTab !== "model"} className="grid gap-4 py-6 text-[#514955]">

@@ -47,4 +47,31 @@ describe("SettingsForm", () => {
 
     expect(onDeleteKey).toHaveBeenCalledOnce();
   });
+
+  it("atualiza a máscara pública após substituir a chave", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue({ ...publicSettingsFixture, apiKeyMask: "••••4321", model: "claude-updated", veoTemplate: "Fala {{copy_completa}}", updatedAt: "2026-08-21T12:01:00.000Z" });
+    render(<SettingsForm initial={publicSettingsFixture} onSave={onSave} onDeleteKey={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Nova chave da Anthropic"), "sk-ant-new-4321");
+    await user.click(screen.getByRole("button", { name: "Salvar configurações" }));
+
+    expect(await screen.findByText("••••4321")).toBeInTheDocument();
+    expect(screen.queryByText("••••7890")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Nova chave da Anthropic")).toHaveValue("");
+    expect(screen.getByLabelText("Modelo Anthropic")).toHaveValue("claude-updated");
+    expect(screen.getByLabelText("Template VEO 3")).toHaveValue("Fala {{copy_completa}}");
+  });
+
+  it("remove imediatamente a máscara e a ação após excluir a chave", async () => {
+    const user = userEvent.setup();
+    const onDeleteKey = vi.fn().mockResolvedValue({ ...publicSettingsFixture, apiKeyConfigured: false, apiKeyMask: null, updatedAt: "2026-08-21T12:01:00.000Z" });
+    render(<SettingsForm initial={publicSettingsFixture} onSave={vi.fn()} onDeleteKey={onDeleteKey} />);
+
+    await user.click(screen.getByRole("button", { name: "Remover credencial" }));
+
+    expect(await screen.findByText("Nenhuma chave configurada.")).toBeInTheDocument();
+    expect(screen.queryByText("••••7890")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remover credencial" })).not.toBeInTheDocument();
+  });
 });

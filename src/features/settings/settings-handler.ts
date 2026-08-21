@@ -8,6 +8,9 @@ const updateSchema = z.object({
   model: z.string().trim().min(1).max(120),
   veoTemplate: z.string().trim().min(1).max(20_000),
 }).strict();
+const MAX_SETTINGS_JSON_BYTES = 20_480;
+
+class PayloadTooLargeError extends Error {}
 
 type SettingsServiceApi = Pick<SettingsService, "getPublic" | "update" | "deleteApiKey">;
 
@@ -27,6 +30,58 @@ function publicResponse(settings: PublicSettings) {
 
 function invalidData() {
   return Response.json({ message: "Dados de configuração inválidos" }, { status: 422 });
+}
+
+function tooLarge() {
+  return Response.json({ message: "Solicitação muito grande" }, { status: 413 });
+}
+
+async function cancelStream(stream: ReadableStream<Uint8Array> | null) {
+  try {
+    await stream?.cancel();
+  } catch {
+    // A conexão pode já ter sido encerrada pelo runtime.
+  }
+}
+
+async function readBoundedJson(request: Request): Promise<unknown> {
+  const contentLength = request.headers.get("content-length");
+  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > MAX_SETTINGS_JSON_BYTES) {
+    await cancelStream(request.body);
+    throw new PayloadTooLargeError();
+  }
+
+  const stream = request.body;
+  if (!stream) throw new Error("Missing body");
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_SETTINGS_JSON_BYTES) {
+        try {
+          await reader.cancel();
+        } catch {
+          // A conexão pode já ter sido encerrada pelo runtime.
+        }
+        throw new PayloadTooLargeError();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
 }
 
 async function authenticate(request: Request, requireSession: SettingsHandlerDependencies["requireSession"]) {
@@ -60,8 +115,9 @@ export function makeSettingsHandlers(deps: SettingsHandlerDependencies) {
 
       let input: z.infer<typeof updateSchema>;
       try {
-        input = updateSchema.parse(await request.json());
-      } catch {
+        input = updateSchema.parse(await readBoundedJson(request));
+      } catch (error) {
+        if (error instanceof PayloadTooLargeError) return tooLarge();
         return invalidData();
       }
       if (!validateVeoTemplate(input.veoTemplate).valid) return invalidData();

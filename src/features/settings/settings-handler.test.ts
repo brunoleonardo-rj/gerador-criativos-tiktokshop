@@ -52,6 +52,58 @@ describe("settings handlers", () => {
     expect((await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", body: "{}" }))).status).toBe(415);
   });
 
+  it("rejeita Content-Length declarado acima do limite antes de ler JSON", async () => {
+    const service = makeService();
+    const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
+
+    const response = await handlers.PUT(new Request("http://local/api/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/json", "content-length": "20481" },
+      body: "{}",
+    }));
+
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ message: "Solicitação muito grande" });
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it("interrompe corpo em stream que ultrapassa o limite mesmo com Content-Length falso", async () => {
+    const service = makeService();
+    const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("x".repeat(20_481)));
+        controller.close();
+      },
+    });
+    const request = new Request("http://local/api/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/json", "content-length": "1" },
+      body: stream,
+      duplex: "half",
+    } as RequestInit);
+
+    const response = await handlers.PUT(request);
+
+    expect(response.status).toBe(413);
+    expect(service.update).not.toHaveBeenCalled();
+  });
+
+  it("aceita um JSON válido próximo ao limite", async () => {
+    const service = makeService();
+    const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
+    const veoTemplate = "{{copy_completa}}" + "a".repeat(20_000 - "{{copy_completa}}".length);
+
+    const response = await handlers.PUT(new Request("http://local/api/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate }),
+    }));
+
+    expect(response.status).toBe(200);
+    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate });
+  });
+
   it("valida entrada de atualização sem substituir a chave quando ela está em branco", async () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
