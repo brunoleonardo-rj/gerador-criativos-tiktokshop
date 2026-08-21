@@ -1,38 +1,21 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, rm, stat, writeFile, readdir } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { LibraryCorpus } from "./schema";
-
-export interface LibraryStorage {
-  writeStaged(input: { importId: string; workbook: Buffer; json: string }): Promise<{ workbookPath: string; jsonPath: string }>;
-  promote(importId: string): Promise<{ workbookPath: string; jsonPath: string }>;
-  restoreStaged?(importId: string): Promise<void>;
-  readJson(filePath: string): Promise<LibraryCorpus>;
-  verify(filePath: string, sha256: string): Promise<boolean>;
-  remove(paths: string[]): Promise<void>;
-  cleanupStaged(olderThan: Date): Promise<void>;
-}
-
-const idPattern = /^[a-zA-Z0-9_-]{8,128}$/;
-function assertId(id: string) { if (!idPattern.test(id)) throw new Error("Identificador de importação inválido"); }
-function safeName(name: string) { const base = path.basename(name).replace(/[^a-zA-Z0-9._-]/g, "_"); return base.endsWith(".xlsx") ? base : "biblioteca.xlsx"; }
-
+export interface LibraryStorage { writeStaged(input: { importId: string; workbook: Buffer; json: string }): Promise<{ workbookPath: string; jsonPath: string }>; promote(importId: string): Promise<{ workbookPath: string; jsonPath: string }>; restoreStaged?(importId: string): Promise<void>; readJson(filePath: string): Promise<LibraryCorpus>; verify(filePath: string, sha256: string): Promise<boolean>; remove(paths: string[]): Promise<void>; cleanupStaged(olderThan: Date): Promise<void>; }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function assertId(id: string) { if (!UUID.test(id)) throw new Error("Identificador de importação inválido"); }
 export class FileLibraryStorage implements LibraryStorage {
-  private readonly root: string; private readonly staging: string; private readonly versions: string;
-  constructor(dataDir: string) { this.root = path.resolve(dataDir, "library"); this.staging = path.join(this.root, "staged"); this.versions = path.join(this.root, "versions"); }
-  private contain(target: string) { const resolved = path.resolve(target); if (!resolved.startsWith(`${this.root}${path.sep}`)) throw new Error("Caminho de biblioteca inválido"); return resolved; }
-  private stagedPaths(id: string) { assertId(id); const dir = path.join(this.staging, id); return { dir, workbookPath: path.join(dir, "source.xlsx"), jsonPath: path.join(dir, "corpus.json") }; }
-  async writeStaged(input: { importId: string; workbook: Buffer; json: string }) {
-    const paths = this.stagedPaths(input.importId); await mkdir(paths.dir, { recursive: true });
-    const temp = `${paths.dir}.tmp-${process.pid}-${Date.now()}`; await mkdir(temp, { recursive: true });
-    try { await writeFile(path.join(temp, "source.xlsx"), input.workbook, { flag: "wx" }); await writeFile(path.join(temp, "corpus.json"), input.json, { flag: "wx" }); await rm(paths.dir, { recursive: true, force: true }); await rename(temp, paths.dir); return { workbookPath: paths.workbookPath, jsonPath: paths.jsonPath }; } catch (error) { await rm(temp, { recursive: true, force: true }); throw error; }
-  }
-  async promote(importId: string) { const staged = this.stagedPaths(importId); const finalDir = path.join(this.versions, importId); this.contain(finalDir); await mkdir(this.versions, { recursive: true }); await stat(staged.workbookPath); await stat(staged.jsonPath); await rm(finalDir, { recursive: true, force: true }); await rename(staged.dir, finalDir); return { workbookPath: path.join(finalDir, "source.xlsx"), jsonPath: path.join(finalDir, "corpus.json") }; }
-  async restoreStaged(importId: string) { const staged = this.stagedPaths(importId); const finalDir = path.join(this.versions, importId); try { await mkdir(this.staging, { recursive: true }); await rm(staged.dir, { recursive: true, force: true }); await rename(finalDir, staged.dir); } catch { /* A falha de restauração não pode alterar metadata ativa. */ } }
-  async readJson(filePath: string) { return JSON.parse(await readFile(this.contain(filePath), "utf8")) as LibraryCorpus; }
-  async verify(filePath: string, sha256: string) { try { const actual = createHash("sha256").update(await readFile(this.contain(filePath))).digest("hex"); return actual === sha256; } catch { return false; } }
-  async remove(paths: string[]) { await Promise.all(paths.map(async (filePath) => { const safe = this.contain(filePath); await rm(path.dirname(safe), { recursive: true, force: true }); })); }
-  async cleanupStaged(olderThan: Date) { try { for (const entry of await readdir(this.staging, { withFileTypes: true })) { if (!entry.isDirectory() || !idPattern.test(entry.name)) continue; const target = path.join(this.staging, entry.name); if ((await stat(target)).mtime < olderThan) await rm(target, { recursive: true, force: true }); } } catch (error: unknown) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; } }
-  static safeFilename(name: string) { return safeName(name); }
+  private readonly root: string; constructor(dataDir: string) { this.root = path.resolve(dataDir, "library"); }
+  private async rootPath() { await mkdir(this.root, { recursive: true }); const info = await lstat(this.root); if (info.isSymbolicLink()) throw new Error("Raiz de biblioteca inválida"); return realpath(this.root); }
+  private async paths(id: string, state: "staged" | "versions") { assertId(id); const root = await this.rootPath(); const dir = path.join(root, state, id); return { dir, workbookPath: path.join(dir, "source.xlsx"), jsonPath: path.join(dir, "corpus.json") }; }
+  private async checked(filePath: string) { const root = await this.rootPath(); const relative = path.relative(root, path.resolve(filePath)).replaceAll("\\", "/"); const match = /^(staged|versions)\/([0-9a-f-]{36})\/(source\.xlsx|corpus\.json)$/i.exec(relative); if (!match || !UUID.test(match[2])) throw new Error("Caminho de biblioteca inválido"); let current = root; for (const part of relative.split("/")) { current = path.join(current, part); const info = await lstat(current); if (info.isSymbolicLink()) throw new Error("Link simbólico não permitido"); } const resolved = await realpath(filePath); if (!resolved.startsWith(`${root}${path.sep}`)) throw new Error("Caminho de biblioteca inválido"); return { resolved, id: match[2] }; }
+  async writeStaged(input: { importId: string; workbook: Buffer; json: string }) { const target = await this.paths(input.importId, "staged"); const parent = path.dirname(target.dir); await mkdir(parent, { recursive: true }); const temp = path.join(parent, `${input.importId}.tmp-${process.pid}-${Date.now()}`); await mkdir(temp); try { await writeFile(path.join(temp, "source.xlsx"), input.workbook, { flag: "wx" }); await writeFile(path.join(temp, "corpus.json"), input.json, { flag: "wx" }); await lstat(target.dir).then(() => { throw new Error("Importação já existe"); }).catch((e: NodeJS.ErrnoException) => { if (e.code !== "ENOENT") throw e; }); await rename(temp, target.dir); return { workbookPath: target.workbookPath, jsonPath: target.jsonPath }; } catch (error) { await rm(temp, { recursive: true, force: true }); throw error; } }
+  async promote(importId: string) { const staged = await this.paths(importId, "staged"); const final = await this.paths(importId, "versions"); await mkdir(path.dirname(final.dir), { recursive: true }); const finalExists = await lstat(final.dir).then(() => true).catch(() => false); const stagedExists = await lstat(staged.dir).then(() => true).catch(() => false); if (finalExists && !stagedExists) { await this.checked(final.workbookPath); await this.checked(final.jsonPath); return { workbookPath: final.workbookPath, jsonPath: final.jsonPath }; } if (!stagedExists || finalExists) throw new Error("Promoção de biblioteca inconsistente"); await this.checked(staged.workbookPath); await this.checked(staged.jsonPath); await rename(staged.dir, final.dir); return { workbookPath: final.workbookPath, jsonPath: final.jsonPath }; }
+  async restoreStaged(importId: string) { const staged = await this.paths(importId, "staged"); const final = await this.paths(importId, "versions"); const stagedExists = await lstat(staged.dir).then(() => true).catch(() => false); const finalExists = await lstat(final.dir).then(() => true).catch(() => false); if (stagedExists && !finalExists) return; if (!finalExists || stagedExists) throw new Error("Restauração de biblioteca inconsistente"); await this.checked(final.workbookPath); await this.checked(final.jsonPath); await rename(final.dir, staged.dir); }
+  async readJson(filePath: string) { const { resolved } = await this.checked(filePath); return JSON.parse(await readFile(resolved, "utf8")) as LibraryCorpus; }
+  async verify(filePath: string, sha256: string) { try { const { resolved } = await this.checked(filePath); return createHash("sha256").update(await readFile(resolved)).digest("hex") === sha256; } catch { return false; } }
+  async remove(paths: string[]) { const dirs = new Set<string>(); for (const value of paths) dirs.add(path.dirname((await this.checked(value)).resolved)); for (const dir of dirs) { if ((await lstat(dir)).isSymbolicLink()) throw new Error("Link simbólico não permitido"); await rm(dir, { recursive: true, force: true }); } }
+  async cleanupStaged(olderThan: Date) { const root = await this.rootPath(); const staging = path.join(root, "staged"); try { for (const entry of await readdir(staging, { withFileTypes: true })) { if (!entry.isDirectory() || !UUID.test(entry.name)) continue; const item = await this.paths(entry.name, "staged"); await this.checked(item.workbookPath); await this.checked(item.jsonPath); if ((await stat(item.dir)).mtime < olderThan) await rm(item.dir, { recursive: true, force: true }); } } catch (error: unknown) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; } }
 }

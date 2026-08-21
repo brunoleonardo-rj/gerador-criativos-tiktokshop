@@ -27,3 +27,13 @@
 
 - Caminhos são derivados exclusivamente de `DATA_DIR/library`, IDs aceitam somente UUID/segmentos sanitizados, e nenhum caminho de cliente é aceito.
 - A semente padrão ocorre na primeira leitura de status por processo. Como o mutex é em processo, múltiplas instâncias de servidor ainda dependem da serialização SQLite; o MVP local não tem coordenação distribuída.
+
+## Fix round 1/5
+
+- RED: o teste de limpeza pós-commit reproduziu `Error: cleanup`, que antes rejeitava uma ativação já confirmada.
+- GREEN: limpeza de versões obsoletas é best-effort depois da transação; a ativação e o snapshot continuam disponíveis.
+- O JSON agora recebe SHA-256 persistido (`jsonSha256`) via migração Prisma e é validado contra schema e SHA do XLSX antes de ativação, rollback e snapshot.
+- Promoção/restauração são idempotentes e, se a restauração após erro transacional falhar, os caminhos finais são reconciliados no STAGED para uma ativação posterior.
+- Multipart aceita uma única parte `file`, MIME XLSX/octet-stream/vazio e continua limitado antes de `formData()`.
+- A storage valida formato estrito de caminhos, IDs UUID, `realpath` e rejeita links simbólicos nos componentes acessados.
+- Verificação desta rodada: `pnpm test` (26 arquivos, 97 testes), `pnpm lint`, `pnpm build` e `prisma generate` aprovados; o recurso inicial também foi encontrado no trace standalone.

@@ -30,6 +30,7 @@ model LibraryVersion {
   id                String        @id @default(cuid())
   sourceFilename    String
   sourceSha256      String
+  jsonSha256        String
   recordCount       Int
   workbookPath      String
   jsonPath          String
