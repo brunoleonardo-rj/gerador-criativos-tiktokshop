@@ -37,3 +37,12 @@
 - Multipart aceita uma única parte `file`, MIME XLSX/octet-stream/vazio e continua limitado antes de `formData()`.
 - A storage valida formato estrito de caminhos, IDs UUID, `realpath` e rejeita links simbólicos nos componentes acessados.
 - Verificação desta rodada: `pnpm test` (26 arquivos, 97 testes), `pnpm lint`, `pnpm build` e `prisma generate` aprovados; o recurso inicial também foi encontrado no trace standalone.
+
+## Fix round 2/5
+
+- RED: a promoção removia o staging no fake e o retry dependia da escrita imediata de metadata; o teste de falha dupla mostrou a dependência.
+- GREEN: `locate(importId)` identifica exatamente uma cópia íntegra em staging ou versions a cada ativação; `promote` permanece idempotente para a cópia já promovida e o retry não exige reconciliação no banco.
+- `jsonSha256` agora é nullable em migrações legadas. Ao encontrar valor vazio, a leitura validada confirma o XLSX e schema/sha do corpus, calcula o hash real do JSON e persiste o backfill antes de continuar.
+- A raiz e os containers são criados em modo privado quando suportado e validados por `lstat`/`realpath`; containers linkados ou não-diretórios são recusados antes de operações de escrita, promoção e cleanup.
+- Verificações focadas: `pnpm test src/features/library/service.test.ts src/features/library/repository.integration.test.ts src/features/library/storage.test.ts` (6 testes), `pnpm lint`, `pnpm build` e Prisma generate aprovados.
+- Após corrigir o trace dinâmico do Turbopack, `pnpm test` voltou a passar integralmente: 26 arquivos e 97 testes.
