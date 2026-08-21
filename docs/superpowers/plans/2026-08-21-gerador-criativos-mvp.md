@@ -140,7 +140,7 @@ Set `package.json#pnpm.onlyBuiltDependencies` to `["better-sqlite3"]` and script
 {
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "test": "vitest run",
@@ -479,6 +479,8 @@ model LibraryVersion {
 ```
 
 `prisma.config.ts` usa `DATABASE_URL` quando definido e, caso contrário, `file:${path.resolve(DATA_DIR ?? "./data", "app.db")}`. Gere a migração com `pnpm prisma migrate dev --name init` e inspecione que ela cria somente as duas tabelas e o índice.
+
+Nesta etapa, altere o script `build` para `prisma generate && next build`, pois o schema Prisma agora existe.
 
 - [ ] **Step 4: Implementar crypto, template e repository**
 
@@ -1205,7 +1207,18 @@ test("login, configuração, geração e cópia do VEO", async ({ page }) => {
   await page.getByLabel("Template VEO 3").fill("Fala: {{copy_completa}}");
   await page.getByRole("button", { name: "Salvar configurações" }).click();
   await page.goto("/");
-  // preencher campos, anexar produto fixture e gerar
+  await page.getByLabel("Nome do produto").fill("Body Splash E2E");
+  await page.getByLabel("Categoria").selectOption("perfumaria");
+  await page.getByLabel("Descrição do anúncio").fill("Kit masculino com quatro fragrâncias de 60 ml.");
+  await page.getByLabel("Perfil UGC").selectOption("masculino");
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByLabel("Fotos do produto").setInputFiles({
+    name: "produto.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nGQAAAAASUVORK5CYII=", "base64"),
+  });
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("button", { name: "Gerar criativos" }).click();
   await expect(page.getByText("Prompt VEO 3")).toBeVisible();
   await expect(page.getByText(/Fala:/)).toBeVisible();
 });
