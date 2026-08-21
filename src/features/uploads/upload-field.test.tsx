@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { UploadField } from "./upload-field";
@@ -73,8 +73,7 @@ describe("UploadField", () => {
     const view = render(<UploadField role="product" min={1} max={3} items={[removed]} onChange={onChange} />);
     fireEvent.change(screen.getByLabelText(/fotos do produto/i), { target: { files: [new File(["x"], "processada.jpg", { type: "image/jpeg" })] } });
     await waitFor(() => expect(resolveResize).toBeTypeOf("function"));
-    view.rerender(<UploadField role="product" min={1} max={3} items={[external]} onChange={onChange} />);
-    await waitFor(() => expect(screen.getByText(/externa.jpg/i)).toBeInTheDocument());
+    act(() => view.rerender(<UploadField role="product" min={1} max={3} items={[external]} onChange={onChange} />));
     resolveResize({ blob: new Blob(["x"], { type: "image/jpeg" }), name: "processada.jpg", type: "image/jpeg", width: 1, height: 1, size: 1 });
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ name: "externa.jpg" }), expect.objectContaining({ name: "processada.jpg" })])));
     expect(onChange.mock.lastCall?.[0].map((item: { name: string }) => item.name)).toEqual(["externa.jpg", "processada.jpg"]);

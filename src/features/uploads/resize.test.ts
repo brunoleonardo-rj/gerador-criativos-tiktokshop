@@ -65,4 +65,12 @@ describe("resizeImage", () => {
     Object.defineProperty(globalThis, "createImageBitmap", { configurable: true, value: vi.fn().mockRejectedValue(new Error("decode")) });
     await expect(resizeImage(new File(["x"], "x.jpg", { type: "image/jpeg" }))).rejects.toThrow("decode");
   });
+
+  it("rejects a null canvas encoding and still closes the decoded image", async () => {
+    const close = vi.fn(); const bitmap = { width: 10, height: 10, close } as unknown as ImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", { configurable: true, value: vi.fn().mockResolvedValue(bitmap) });
+    canvasFixture(255, null);
+    await expect(resizeImage(new File(["x"], "x.jpg", { type: "image/jpeg" }))).rejects.toThrow(/encode/i);
+    expect(close).toHaveBeenCalledOnce();
+  });
 });

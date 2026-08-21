@@ -15,8 +15,11 @@ export function UploadField({ role, min, max, items, onChange }: UploadFieldProp
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(0);
   const currentItems = useRef(items);
+  const lastPropItems = useRef(items);
   const queue = useRef(Promise.resolve());
-  useEffect(() => { currentItems.current = items; }, [items]);
+  // Synchronize during render, before a pending resize continuation can commit.
+  // eslint-disable-next-line react-hooks/refs
+  if (lastPropItems.current !== items) { lastPropItems.current = items; currentItems.current = items; }
   const previews = useMemo(() => {
     const next: Record<string, string> = {};
     for (const item of items) next[item.id] = URL.createObjectURL(item.blob);

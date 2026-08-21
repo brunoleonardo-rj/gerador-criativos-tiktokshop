@@ -58,9 +58,19 @@ export const draftStorage = {
 let databasePromise: ReturnType<typeof openDB<CreativeDatabase>> | undefined;
 function database() {
   databasePromise ??= openDB<CreativeDatabase>(DATABASE_NAME, 2, {
-    upgrade(db) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
       if (!db.objectStoreNames.contains("images")) db.createObjectStore("images", { keyPath: "id" });
       if (!db.objectStoreNames.contains("results")) db.createObjectStore("results", { keyPath: "id" });
+      if (oldVersion < 2 && db.objectStoreNames.contains("images")) {
+        const store = transaction.objectStore("images"); let order = 0;
+        store.openCursor().then(function assignOrder(cursor): Promise<void> | void {
+          if (!cursor) return;
+          const value = cursor.value as StoredImage;
+          if (typeof value.order !== "number") cursor.update({ ...value, order: order });
+          order += 1;
+          return cursor.continue().then(assignOrder);
+        });
+      }
     },
   });
   return databasePromise;
