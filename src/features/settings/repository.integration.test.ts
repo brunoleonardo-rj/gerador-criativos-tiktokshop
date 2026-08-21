@@ -1,0 +1,32 @@
+import { describe, expect, it } from "vitest";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaClient } from "@/generated/prisma/client";
+import type { EncryptedSecret } from "./crypto";
+import { PrismaSettingsRepository } from "./repository";
+
+describe("PrismaSettingsRepository", () => {
+  it("persiste apenas os campos criptografados e limpa todos ao remover a chave", async () => {
+    const client = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: ":memory:" }) });
+    await client.$executeRawUnsafe(`CREATE TABLE "AppSettings" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "anthropicKeyCiphertext" TEXT,
+      "anthropicKeyIv" TEXT,
+      "anthropicKeyTag" TEXT,
+      "anthropicKeyVersion" INTEGER,
+      "anthropicKeyLastFour" TEXT,
+      "anthropicModel" TEXT NOT NULL DEFAULT 'claude-sonnet-5',
+      "veoTemplate" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL
+    )`);
+    const repository = new PrismaSettingsRepository(client);
+    const encrypted: EncryptedSecret = { ciphertext: "ciphertext", iv: "iv", tag: "tag", version: 1 };
+
+    await repository.getOrCreate("{{copy_completa}}");
+    const saved = await repository.update({ encryptedApiKey: encrypted, apiKeyLastFour: "7890", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}" });
+    expect(saved.encryptedApiKey).toEqual(encrypted);
+    await repository.deleteApiKey();
+    expect((await repository.getOrCreate("unused")).encryptedApiKey).toBeNull();
+    await client.$disconnect();
+  });
+});

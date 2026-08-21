@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "test": "vitest run",
