@@ -36,6 +36,7 @@ describe("validação editorial", () => {
     const base = creativeBatchFixture(); const second = { ...base.creatives[0], id: "creative-2" };
     const report = validateCreativeBatch(generationInputFixture({ quantidadeCriativos: 2 }), { ...base, creatives: [base.creatives[0], second] }, "{{copy_completa}}");
     expect(report.creatives[1].issues.map((issue) => issue.code)).toEqual(expect.arrayContaining(["ENVIRONMENT_REPEATED", "HASHTAGS_REPEATED", "CREATIVE_DUPLICATE"]));
+    expect(report.creatives[1].issues.filter((issue) => issue.code === "CREATIVE_DUPLICATE").map((issue) => issue.field).sort()).toEqual(["ambiente", "hashtags", "pose"]);
   });
   it("bloqueia template inválido e nunca vaza segredos", () => {
     const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{segredo}}");

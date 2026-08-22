@@ -20,7 +20,7 @@ export default defineConfig({
   webServer: {
     command: "pnpm dev --hostname localhost --port 3101",
     url: "http://localhost:3101/api/health",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
       ...process.env,

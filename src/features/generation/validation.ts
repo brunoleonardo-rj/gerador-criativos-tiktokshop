@@ -74,7 +74,9 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     if (!allowedEnvironments.has(environmentKey)) add(issues, "ENVIRONMENT_NOT_ALLOWED", "block", "ambiente", "O ambiente não pertence à lista permitida.");
     if (seenEnvironment.has(environmentKey)) add(issues, "ENVIRONMENT_REPEATED", "warning", "ambiente", "O ambiente se repete."); else seenEnvironment.add(environmentKey);
     const triple = `${environmentKey}|${normalizeKey(creative.pose)}|${hashtagKey}`;
-    if (seenTriples.has(triple)) add(issues, "CREATIVE_DUPLICATE", "block", "creative", "Ambiente, pose e hashtags repetidos simultaneamente."); else seenTriples.add(triple);
+    if (seenTriples.has(triple)) {
+      for (const field of ["ambiente", "pose", "hashtags"]) add(issues, "CREATIVE_DUPLICATE", "block", field, "Ambiente, pose e hashtags repetidos simultaneamente.");
+    } else seenTriples.add(triple);
     const actualPov = countWords(creative.pov.texto);
     if (creative.pov.palavras !== actualPov) add(issues, "POV_DECLARED_WORDS", "warning", "pov.palavras", "A contagem declarada diverge da contagem real.");
     if (actualPov > safeInput.maxPalavrasPov) add(issues, "POV_WORDS", "warning", "pov.texto", "O POV ultrapassa o limite configurado.");

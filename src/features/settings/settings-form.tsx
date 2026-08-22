@@ -156,7 +156,7 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
       <section role="tabpanel" id="settings-panel-template" aria-labelledby="settings-tab-template" hidden={activeTab !== "template"} className="grid gap-4 py-6 text-[#514955]">
         <h2>Prompt VEO 3</h2>
         <label htmlFor="veo-template">Template VEO 3</label>
-        <textarea id="veo-template" name="veoTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={8} value={veoTemplate} onChange={(event) => setVeoTemplate(event.target.value)} aria-invalid={!templateValidation.valid} aria-describedby="veo-template-help veo-template-error" required />
+        <textarea id="veo-template" name="veoTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={8} value={veoTemplate} onChange={(event) => setVeoTemplate(event.target.value)} aria-invalid={!templateValidation.valid} aria-describedby={`veo-template-help${templateValidation.valid ? "" : " veo-template-error"}`} required />
         <p id="veo-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{copy_completa}}"}, {"{{copy_trecho1}}"}, {"{{copy_trecho2}}"}, {"{{pov}}"}, {"{{ambiente}}"}, {"{{figurino}}"}, {"{{pose}}"} e {"{{prompt_gemini}}"}.</p>
         {!templateValidation.valid && <p id="veo-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {templateValidation.unknown.join(", ")}.</p>}
         <h3>Prévia com dados fictícios</h3>

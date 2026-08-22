@@ -93,7 +93,7 @@ function legacyPrismaRows(database: Database.Database): Array<{ migration_name: 
   for (const expected of ["migration_name", "checksum", "finished_at", "rolled_back_at"]) {
     if (!columns.includes(expected)) throw new Error("Banco Prisma legado não pode ser verificado; restaure um backup ou execute a recuperação documentada.");
   }
-  return database.prepare("SELECT migration_name, checksum, finished_at FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL")
+  return database.prepare("SELECT migration_name, checksum, finished_at FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY finished_at ASC, rowid ASC")
     .all() as Array<{ migration_name: string; checksum: string; finished_at: string }>;
 }
 
@@ -105,21 +105,17 @@ function adoptPrismaMigrations(database: Database.Database, migrations: Migratio
   }
 
   const legacy = legacyPrismaRows(database);
-  const canonical = new Map(migrations.map((migration) => [migration.name, migration.checksum]));
   const uniqueLegacyNames = new Set(legacy.map((row) => row.migration_name));
-  const exactLegacySet = legacy.length === migrations.length
+  const exactLegacyPrefix = legacy.length <= migrations.length
     && uniqueLegacyNames.size === legacy.length
-    && legacy.every((row) => canonical.get(row.migration_name) === row.checksum);
-  if (!exactLegacySet) {
-    if (existingSchema) throw new Error("Histórico Prisma não corresponde às migrações locais. Faça backup e recupere o banco antes de continuar.");
-    return;
-  }
+    && legacy.every((row, index) => migrations[index]?.name === row.migration_name && migrations[index]?.checksum === row.checksum);
+  if (!exactLegacyPrefix) throw new Error("Histórico Prisma não corresponde às migrações locais. Faça backup e recupere o banco antes de continuar.");
+  if (existingSchema && legacy.length === 0) throw new Error("Banco existente sem histórico Prisma aplicável. Faça backup e recupere o banco antes de continuar.");
 
   const insert = database.prepare(`INSERT OR IGNORE INTO ${TRACKING_TABLE} (name, checksum, appliedAt) VALUES (?, ?, ?)`);
   const adopt = database.transaction(() => {
-    for (const migration of migrations) {
-      const legacyRow = legacy.find((row) => row.migration_name === migration.name);
-      if (!legacyRow) throw new Error("Histórico Prisma não corresponde às migrações locais.");
+    for (const [index, legacyRow] of legacy.entries()) {
+      const migration = migrations[index];
       insert.run(migration.name, migration.checksum, legacyRow.finished_at);
     }
   });

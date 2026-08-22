@@ -8,6 +8,9 @@ function isBlocked(creative: CreativeEnvelope, field: string) { return creative.
 function addSection(parts: string[], title: string, value: string | null | undefined, blocked: boolean) { if (!blocked && value) parts.push(`## ${title}\n\n${value}`); }
 export function buildCreativePackage(creative: CreativeEnvelope) {
   const parts: string[] = [];
+  addSection(parts, "Ambiente", creative.ambiente, isBlocked(creative, "ambiente"));
+  addSection(parts, "Figurino", creative.figurino, isBlocked(creative, "figurino"));
+  addSection(parts, "Pose", creative.pose, isBlocked(creative, "pose"));
   addSection(parts, "Copy — trecho 1", creative.copy.trecho1.texto, isBlocked(creative, "copy.trecho1"));
   addSection(parts, "Copy — trecho 2", creative.copy.trecho2.texto, isBlocked(creative, "copy.trecho2"));
   if (creative.copy.trecho3) addSection(parts, "Copy — trecho 3", creative.copy.trecho3.texto, isBlocked(creative, "copy.trecho3"));
@@ -26,7 +29,10 @@ function CopySegment({ creative, index }: { creative: CreativeEnvelope; index: 1
 }
 export function ResultCard({ creative }: { creative: CreativeEnvelope }) {
   const packageText = buildCreativePackage(creative);
-  return <article className="rounded-xl border border-stone-200 bg-white p-4"><details><summary className="cursor-pointer font-bold">{creative.id} — {creative.angulo} ({statusLabel[creative.status]})</summary><div className="grid gap-4 pt-4"><p><strong>Ambiente:</strong> {creative.ambiente}</p><p><strong>Figurino:</strong> {creative.figurino}</p><p><strong>Pose:</strong> {creative.pose}</p>
+  return <article className="rounded-xl border border-stone-200 bg-white p-4"><details><summary className="cursor-pointer font-bold">{creative.id} — {creative.angulo} ({statusLabel[creative.status]})</summary><div className="grid gap-4 pt-4">
+    <section><h3>Ambiente</h3><p>{creative.ambiente}</p><CopyField label="Copiar ambiente" text={creative.ambiente} blocked={isBlocked(creative, "ambiente")} /></section>
+    <section><h3>Figurino</h3><p>{creative.figurino}</p><CopyField label="Copiar figurino" text={creative.figurino} blocked={isBlocked(creative, "figurino")} /></section>
+    <section><h3>Pose</h3><p>{creative.pose}</p><CopyField label="Copiar pose" text={creative.pose} blocked={isBlocked(creative, "pose")} /></section>
     <CopySegment creative={creative} index={1} /><CopySegment creative={creative} index={2} /><CopySegment creative={creative} index={3} />
     <section><h3>Descrição</h3><p>{creative.descricao}</p><CopyField label="Copiar descrição" text={creative.descricao} blocked={isBlocked(creative, "descricao")} /></section>
     <section><h3>Hashtags</h3><p>{creative.hashtags.join(" ")}</p><CopyField label="Copiar hashtags" text={creative.hashtags.join(" ")} blocked={isBlocked(creative, "hashtags")} /></section>

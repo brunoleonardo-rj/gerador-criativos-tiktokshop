@@ -111,6 +111,37 @@ describe("runMigrations", () => {
     }
   });
 
+  it("adopts an exact Prisma prefix and applies the remaining canonical migration", async () => {
+    const { migrationsDir, databasePath } = await fixture();
+    const firstSql = "CREATE TABLE first_table (id INTEGER PRIMARY KEY);\n";
+    const secondSql = "CREATE TABLE second_table (id INTEGER PRIMARY KEY);\n";
+    await migration(migrationsDir, "20260101000000_first", firstSql);
+    await migration(migrationsDir, "20260102000000_second", secondSql);
+    await mkdir(path.dirname(databasePath), { recursive: true });
+    const database = new Database(databasePath);
+    try {
+      database.exec(`${firstSql} CREATE TABLE _prisma_migrations (migration_name TEXT, checksum TEXT, finished_at TEXT, rolled_back_at TEXT);`);
+      database.prepare("INSERT INTO _prisma_migrations (migration_name, checksum, finished_at, rolled_back_at) VALUES (?, ?, ?, NULL)")
+        .run("20260101000000_first", createHash("sha256").update(firstSql).digest("hex"), "2026-01-01T00:00:00.000Z");
+    } finally {
+      database.close();
+    }
+
+    await runMigrations({ migrationsDir, env: { DATABASE_URL: pathToFileURL(databasePath).href } });
+
+    const verified = new Database(databasePath, { readonly: true });
+    try {
+      expect(verified.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('first_table', 'second_table') ORDER BY name").all())
+        .toEqual([{ name: "first_table" }, { name: "second_table" }]);
+      expect(verified.prepare("SELECT name FROM __app_migrations ORDER BY name").all()).toEqual([
+        { name: "20260101000000_first" },
+        { name: "20260102000000_second" },
+      ]);
+    } finally {
+      verified.close();
+    }
+  });
+
   it("refuses adoption when Prisma has an extra successful migration", async () => {
     const { migrationsDir, databasePath } = await fixture();
     const sql = "CREATE TABLE existing_table (id INTEGER PRIMARY KEY);\n";

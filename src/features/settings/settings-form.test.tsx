@@ -27,6 +27,19 @@ describe("SettingsForm", () => {
     expect(screen.getByText(/variáveis não permitidas/i)).toBeInTheDocument();
   });
 
+  it("descreve o template somente com ids existentes", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm initial={publicSettingsFixture} onSave={vi.fn()} onDeleteKey={vi.fn()} />);
+    await user.click(screen.getByRole("tab", { name: "Prompt VEO 3" }));
+    const editor = screen.getByLabelText("Template VEO 3");
+
+    expect(editor).toHaveAttribute("aria-describedby", "veo-template-help");
+    await user.clear(editor);
+    await user.type(editor, "{{variavel_inexistente}}");
+    expect(editor).toHaveAttribute("aria-describedby", "veo-template-help veo-template-error");
+    expect(document.getElementById("veo-template-error")).toBeInTheDocument();
+  });
+
   it("não envia a chave salva quando o campo de substituição fica vazio", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);

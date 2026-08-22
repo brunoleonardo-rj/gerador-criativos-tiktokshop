@@ -65,6 +65,48 @@ describe("makeLoginHandler", () => {
     await expect(handler(request(expected, { "content-type": "application/json; charset=utf-8" }))).resolves.toMatchObject({ status: 204 });
   });
 
+  it("rejeita Content-Length acima do limite sem consumir o stream", async () => {
+    let pulled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull() {
+        pulled = true;
+        throw new Error("o corpo não deveria ser lido");
+      },
+    });
+    const handler = makeLoginHandler({ expected, secret, limiter: new LoginRateLimiter({ maxAttempts: 5, windowMs: 900_000 }), globalLimiter: globalLimiter() });
+    const response = await handler(new Request("http://local/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": "20000", origin: "http://local" },
+      body,
+      duplex: "half",
+    } as unknown as RequestInit));
+
+    expect(response.status).toBe(413);
+    expect(pulled).toBe(false);
+  });
+
+  it("interrompe um stream acima do limite mesmo sem Content-Length e contabiliza a falha", async () => {
+    const limiter = new LoginRateLimiter({ maxAttempts: 1, windowMs: 900_000 });
+    const handler = makeLoginHandler({ expected, secret, limiter, globalLimiter: globalLimiter() });
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(12_000));
+        controller.enqueue(new Uint8Array(5_000));
+        controller.close();
+      },
+    });
+    const oversized = await handler(new Request("http://local/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "http://local" },
+      body,
+      duplex: "half",
+    } as unknown as RequestInit));
+    const nextAttempt = await handler(request(expected));
+
+    expect(oversized.status).toBe(413);
+    expect(nextAttempt.status).toBe(401);
+  });
+
   it("mantém o bloqueio global quando endereços confiáveis são rotacionados", async () => {
     const handler = makeLoginHandler({
       expected,

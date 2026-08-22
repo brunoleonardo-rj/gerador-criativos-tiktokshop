@@ -53,6 +53,28 @@ describe("ResultCard", () => {
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("## Descrição"));
   });
 
+  it("blocks duplicate environment, pose and hashtags in controls and the complete package", async () => {
+    const base = result();
+    const creative = {
+      ...base,
+      issues: ["ambiente", "pose", "hashtags"].map((field) => ({ code: "CREATIVE_DUPLICATE", severity: "block" as const, field, message: "Criativo duplicado" })),
+      status: "blocked" as const,
+    };
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<ResultCard creative={creative} />);
+
+    expect(screen.getByRole("button", { name: "Copiar ambiente" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Copiar pose" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Copiar hashtags" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Copiar pacote completo" }));
+    expect(writeText).toHaveBeenCalledWith(expect.not.stringContaining("## Ambiente"));
+    expect(writeText).toHaveBeenCalledWith(expect.not.stringContaining("## Pose"));
+    expect(writeText).toHaveBeenCalledWith(expect.not.stringContaining("## Hashtags"));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("## Figurino"));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("## Descrição"));
+  });
+
   it("labels warnings and blocks with accessible severity", () => {
     const creative = { ...result(), issues: [{ code: "ONE", severity: "block" as const, field: "descricao", message: "Bloqueie" }, { code: "TWO", severity: "warning" as const, field: "pov", message: "Revise" }], status: "blocked" as const };
     render(<ResultCard creative={creative} />);
