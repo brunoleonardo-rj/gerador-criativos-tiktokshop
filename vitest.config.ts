@@ -8,5 +8,10 @@ export default defineConfig({
       "server-only": path.resolve(import.meta.dirname, "vitest.server-only.ts"),
     },
   },
-  test: { environment: "jsdom", setupFiles: ["./vitest.setup.ts"], restoreMocks: true, exclude: ["tests/e2e/**", "node_modules/**", ".next/**"] },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    restoreMocks: true,
+    exclude: ["tests/e2e/**", "node_modules/**", ".next/**", ".worktrees/**"],
+  },
 });
