@@ -157,7 +157,10 @@ export async function runMigrations(options: MigrationRunnerOptions = {}): Promi
     const preExistingTables = existed ? tableNames(database) : [];
     const existingSchema = preExistingTables.some((name) => name !== TRACKING_TABLE && name !== "_prisma_migrations");
     ensureTrackingTable(database);
-    if (!preExistingTables.includes(TRACKING_TABLE)) adoptPrismaMigrations(database, migrations, existingSchema);
+    const trackingIsEmpty = (database.prepare(`SELECT COUNT(*) AS count FROM ${TRACKING_TABLE}`).get() as { count: number }).count === 0;
+    const shouldAdopt = !preExistingTables.includes(TRACKING_TABLE)
+      || (trackingIsEmpty && preExistingTables.includes("_prisma_migrations"));
+    if (shouldAdopt) adoptPrismaMigrations(database, migrations, existingSchema);
     let applied = 0;
     for (const migration of migrations) if (applyMigration(database, migration)) applied += 1;
     return { applied, databasePath };

@@ -161,6 +161,41 @@ describe("runMigrations", () => {
       .rejects.toThrow(/Histórico Prisma não corresponde/i);
   });
 
+  it("retries a rejected adoption without bypassing extra Prisma history", async () => {
+    const { migrationsDir, databasePath } = await fixture();
+    const sql = "CREATE TABLE existing_table (id INTEGER PRIMARY KEY);\n";
+    await migration(migrationsDir, "20260101000000_existing", sql);
+    await mkdir(path.dirname(databasePath), { recursive: true });
+    const database = new Database(databasePath);
+    try {
+      database.exec(`${sql} CREATE TABLE _prisma_migrations (migration_name TEXT, checksum TEXT, finished_at TEXT, rolled_back_at TEXT);`);
+      const insert = database.prepare("INSERT INTO _prisma_migrations (migration_name, checksum, finished_at, rolled_back_at) VALUES (?, ?, ?, NULL)");
+      insert.run("20260101000000_existing", createHash("sha256").update(sql).digest("hex"), "2026-01-01T00:00:00.000Z");
+      insert.run("20260102000000_extra", "f".repeat(64), "2026-01-02T00:00:00.000Z");
+    } finally {
+      database.close();
+    }
+    const options = { migrationsDir, env: { DATABASE_URL: pathToFileURL(databasePath).href } };
+
+    await expect(runMigrations(options)).rejects.toThrow(/Histórico Prisma não corresponde/i);
+    await expect(runMigrations(options)).rejects.toThrow(/Histórico Prisma não corresponde/i);
+
+    const repaired = new Database(databasePath);
+    try {
+      repaired.prepare("DELETE FROM _prisma_migrations WHERE migration_name = ?").run("20260102000000_extra");
+    } finally {
+      repaired.close();
+    }
+
+    await expect(runMigrations(options)).resolves.toMatchObject({ applied: 0 });
+    const verified = new Database(databasePath, { readonly: true });
+    try {
+      expect(verified.prepare("SELECT name FROM __app_migrations").all()).toEqual([{ name: "20260101000000_existing" }]);
+    } finally {
+      verified.close();
+    }
+  });
+
   it("refuses adoption when Prisma has duplicate successful migration names", async () => {
     const { migrationsDir, databasePath } = await fixture();
     const sql = "CREATE TABLE existing_table (id INTEGER PRIMARY KEY);\n";
