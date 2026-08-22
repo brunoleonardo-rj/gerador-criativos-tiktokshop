@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import Database from "better-sqlite3";
+import { runMigrations } from "../../scripts/migrate";
 
 const runtimeDir = path.resolve("test-results/runtime-data");
 
@@ -16,13 +16,5 @@ export default async function globalSetup() {
   await writeFile(path.join(runtimeDir, "biblioteca-e2e.xlsx"), Buffer.concat([
     source.subarray(0, endOfCentralDirectory + 20), commentLength, comment,
   ]));
-  const database = new Database(path.join(runtimeDir, "app.db"));
-  try {
-    for (const migration of [
-      "20260821000000_init/migration.sql",
-      "20260821010000_library_json_integrity/migration.sql",
-    ]) database.exec(await readFile(path.resolve("prisma/migrations", migration), "utf8"));
-  } finally {
-    database.close();
-  }
+  await runMigrations({ env: { DATA_DIR: runtimeDir } });
 }

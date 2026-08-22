@@ -43,9 +43,18 @@ Os E2E usam Chromium, dados em `test-results/runtime-data`, credenciais de teste
 
 ## Produção standalone
 
-Depois de `pnpm build`, a execução é `node .next/standalone/server.js`. Copie para a pasta de execução o conteúdo de `.next/standalone`, `.next/static` em `.next/standalone/.next/static` e `public` em `.next/standalone/public`.
+Depois de `pnpm build`, materialize a entrega sem symlinks do pnpm e execute somente essa árvore:
 
-Compile e instale dependências nativas no Linux do host de destino. Não copie `node_modules`, o cliente Prisma ou binários SQLite gerados no Windows. O guia de aaPanel está em [docs/aaPanel.md](docs/aaPanel.md).
+```powershell
+pnpm standalone:prepare
+$env:HOSTNAME = "127.0.0.1"
+$env:PORT = "3000"
+node .next/deploy/server.js
+```
+
+O comando inclui `public` e `.next/static`. Faça build e instale as dependências nativas no Linux do host de destino; não copie `node_modules`, o cliente Prisma ou binários SQLite Windows.
+
+O guia de aaPanel está em [docs/aaPanel.md](docs/aaPanel.md).
 
 ## Limitações do MVP
 

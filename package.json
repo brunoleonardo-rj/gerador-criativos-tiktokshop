@@ -14,8 +14,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "db:migrate": "prisma migrate deploy",
-    "library:build": "tsx scripts/build-library.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "library:build": "tsx scripts/build-library.ts",
+    "standalone:prepare": "tsx scripts/prepare-standalone.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

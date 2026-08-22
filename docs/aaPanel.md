@@ -13,19 +13,25 @@ pnpm db:migrate
 pnpm build
 ```
 
-Mantenha no ambiente do processo `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `AUTH_SECRET`, `TRUSTED_PROXY_SECRET`, `SETTINGS_ENCRYPTION_KEY` e `DATA_DIR`. Rode o processo standalone por meio do gerenciador de processos do aaPanel:
+Mantenha no ambiente do processo `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `AUTH_SECRET`, `TRUSTED_PROXY_SECRET`, `SETTINGS_ENCRYPTION_KEY` e `DATA_DIR`. Depois do build, execute `pnpm standalone:prepare` e rode somente o diretório materializado pelo gerenciador de processos do aaPanel:
 
 ```sh
-node .next/standalone/server.js
+HOSTNAME=127.0.0.1 PORT=3000 node .next/deploy/server.js
 ```
 
-Copie também `.next/static` para `.next/standalone/.next/static` e `public` para `.next/standalone/public`.
+O materializador já inclui `.next/static` e `public`, eliminando links pnpm da entrega Windows/Linux.
 
 ## Proxy reverso Nginx
 
 O Node deve escutar somente em loopback/rede privada; ele não deve ser exposto publicamente. Termine HTTPS no Nginx e encaminhe o IP do cliente apenas após autenticar a borda com o segredo de proxy.
 
 ```nginx
+# contexto http (não dentro de server)
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
 server {
     listen 443 ssl http2;
     server_name exemplo.seudominio.com;
