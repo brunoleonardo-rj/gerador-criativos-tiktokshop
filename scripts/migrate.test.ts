@@ -111,6 +111,45 @@ describe("runMigrations", () => {
     }
   });
 
+  it("refuses adoption when Prisma has an extra successful migration", async () => {
+    const { migrationsDir, databasePath } = await fixture();
+    const sql = "CREATE TABLE existing_table (id INTEGER PRIMARY KEY);\n";
+    await migration(migrationsDir, "20260101000000_existing", sql);
+    await mkdir(path.dirname(databasePath), { recursive: true });
+    const database = new Database(databasePath);
+    try {
+      database.exec(`${sql} CREATE TABLE _prisma_migrations (migration_name TEXT, checksum TEXT, finished_at TEXT, rolled_back_at TEXT);`);
+      const insert = database.prepare("INSERT INTO _prisma_migrations (migration_name, checksum, finished_at, rolled_back_at) VALUES (?, ?, ?, NULL)");
+      insert.run("20260101000000_existing", createHash("sha256").update(sql).digest("hex"), "2026-01-01T00:00:00.000Z");
+      insert.run("20260101000000_extra", "f".repeat(64), "2026-01-02T00:00:00.000Z");
+    } finally {
+      database.close();
+    }
+
+    await expect(runMigrations({ migrationsDir, env: { DATABASE_URL: pathToFileURL(databasePath).href } }))
+      .rejects.toThrow(/Histórico Prisma não corresponde/i);
+  });
+
+  it("refuses adoption when Prisma has duplicate successful migration names", async () => {
+    const { migrationsDir, databasePath } = await fixture();
+    const sql = "CREATE TABLE existing_table (id INTEGER PRIMARY KEY);\n";
+    await migration(migrationsDir, "20260101000000_existing", sql);
+    await mkdir(path.dirname(databasePath), { recursive: true });
+    const database = new Database(databasePath);
+    try {
+      database.exec(`${sql} CREATE TABLE _prisma_migrations (migration_name TEXT, checksum TEXT, finished_at TEXT, rolled_back_at TEXT);`);
+      const insert = database.prepare("INSERT INTO _prisma_migrations (migration_name, checksum, finished_at, rolled_back_at) VALUES (?, ?, ?, NULL)");
+      const checksum = createHash("sha256").update(sql).digest("hex");
+      insert.run("20260101000000_existing", checksum, "2026-01-01T00:00:00.000Z");
+      insert.run("20260101000000_existing", checksum, "2026-01-02T00:00:00.000Z");
+    } finally {
+      database.close();
+    }
+
+    await expect(runMigrations({ migrationsDir, env: { DATABASE_URL: pathToFileURL(databasePath).href } }))
+      .rejects.toThrow(/Histórico Prisma não corresponde/i);
+  });
+
   it("keeps one canonical history when callers start together", async () => {
     const { migrationsDir, databasePath } = await fixture();
     await migration(migrationsDir, "20260101000000_first", "CREATE TABLE first_table (id INTEGER PRIMARY KEY);\n");

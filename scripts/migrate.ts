@@ -104,10 +104,13 @@ function adoptPrismaMigrations(database: Database.Database, migrations: Migratio
     return;
   }
 
-  const canonical = new Map(migrations.map((migration) => [migration.name, migration]));
-  const legacy = new Map(legacyPrismaRows(database).map((row) => [row.migration_name, row]));
-  const matchesEveryMigration = migrations.every((migration) => legacy.get(migration.name)?.checksum === migration.checksum);
-  if (!matchesEveryMigration) {
+  const legacy = legacyPrismaRows(database);
+  const canonical = new Map(migrations.map((migration) => [migration.name, migration.checksum]));
+  const uniqueLegacyNames = new Set(legacy.map((row) => row.migration_name));
+  const exactLegacySet = legacy.length === migrations.length
+    && uniqueLegacyNames.size === legacy.length
+    && legacy.every((row) => canonical.get(row.migration_name) === row.checksum);
+  if (!exactLegacySet) {
     if (existingSchema) throw new Error("Histórico Prisma não corresponde às migrações locais. Faça backup e recupere o banco antes de continuar.");
     return;
   }
@@ -115,8 +118,8 @@ function adoptPrismaMigrations(database: Database.Database, migrations: Migratio
   const insert = database.prepare(`INSERT OR IGNORE INTO ${TRACKING_TABLE} (name, checksum, appliedAt) VALUES (?, ?, ?)`);
   const adopt = database.transaction(() => {
     for (const migration of migrations) {
-      const legacyRow = legacy.get(migration.name);
-      if (!legacyRow || canonical.get(migration.name)?.checksum !== legacyRow.checksum) continue;
+      const legacyRow = legacy.find((row) => row.migration_name === migration.name);
+      if (!legacyRow) throw new Error("Histórico Prisma não corresponde às migrações locais.");
       insert.run(migration.name, migration.checksum, legacyRow.finished_at);
     }
   });

@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "node .next/standalone/server.js",
+    "start": "node .next/deploy/server.js",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",

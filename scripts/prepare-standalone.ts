@@ -1,4 +1,4 @@
-import { chmod, copyFile, lstat, mkdir, readdir, realpath, rm, stat } from "node:fs/promises";
+import { chmod, copyFile, lstat, mkdir, readFile, readlink, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -34,22 +34,58 @@ async function assertDestinationIsSafe(workspaceRoot: string, source: string, de
   }
 }
 
-async function copyMaterialized(source: string, destination: string, activeDirectories: Set<string>): Promise<void> {
-  const sourceLink = await lstat(source);
-  const resolved = sourceLink.isSymbolicLink() ? await realpath(source) : source;
+function lexicalPath(value: string): string {
+  const resolved = path.resolve(value);
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
+async function targetOfLink(source: string): Promise<string> {
+  const target = await readlink(source);
+  const resolved = path.resolve(path.dirname(source), target);
+  try {
+    await lstat(resolved);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error("A árvore standalone contém um link quebrado.");
+    }
+    throw error;
+  }
+  return resolved;
+}
+
+async function copyMaterialized(
+  source: string,
+  destination: string,
+  activeDirectories: Set<string>,
+  activeLinks: Set<string>,
+): Promise<void> {
+  const resolved = path.resolve(source);
+  const sourceLink = await lstat(resolved);
+  if (sourceLink.isSymbolicLink()) {
+    const linkKey = lexicalPath(resolved);
+    if (activeLinks.has(linkKey)) throw new Error("Foi detectado um ciclo de links na árvore standalone.");
+    activeLinks.add(linkKey);
+    try {
+      await copyMaterialized(await targetOfLink(resolved), destination, activeDirectories, activeLinks);
+    } finally {
+      activeLinks.delete(linkKey);
+    }
+    return;
+  }
+
   const info = await stat(resolved);
   if (info.isDirectory()) {
-    const canonicalDirectory = await realpath(resolved);
-    if (activeDirectories.has(canonicalDirectory)) throw new Error("Foi detectado um ciclo de links na árvore standalone.");
-    activeDirectories.add(canonicalDirectory);
+    const directoryKey = lexicalPath(resolved);
+    if (activeDirectories.has(directoryKey)) throw new Error("Foi detectado um ciclo de links na árvore standalone.");
+    activeDirectories.add(directoryKey);
     try {
       await mkdir(destination, { recursive: true, mode: info.mode & 0o777 });
-      for (const entry of await readdir(canonicalDirectory)) {
-        await copyMaterialized(path.join(canonicalDirectory, entry), path.join(destination, entry), activeDirectories);
+      for (const entry of await readdir(resolved)) {
+        await copyMaterialized(path.join(resolved, entry), path.join(destination, entry), activeDirectories, activeLinks);
       }
       await chmod(destination, info.mode & 0o777);
     } finally {
-      activeDirectories.delete(canonicalDirectory);
+      activeDirectories.delete(directoryKey);
     }
     return;
   }
@@ -68,6 +104,50 @@ async function assertNoLinks(directory: string): Promise<void> {
   }
 }
 
+async function pathExists(item: string): Promise<boolean> {
+  try {
+    await lstat(item);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+async function readPackageManifest(packageDirectory: string): Promise<{ name?: string; version?: string; dependencies?: Record<string, string> }> {
+  return JSON.parse(await readFile(path.join(packageDirectory, "package.json"), "utf8")) as {
+    name?: string;
+    version?: string;
+    dependencies?: Record<string, string>;
+  };
+}
+
+async function findPnpmPackage(store: string, packageName: string, version: string): Promise<string | undefined> {
+  for (const entry of await readdir(store, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const candidate = path.join(store, entry.name, "node_modules", packageName);
+    if (!(await pathExists(candidate))) continue;
+    const manifest = await readPackageManifest(candidate);
+    if (manifest.name === packageName && manifest.version === version) return candidate;
+  }
+  return undefined;
+}
+
+async function materializeNextRuntimeDependencies(destination: string): Promise<void> {
+  const nodeModules = path.join(destination, "node_modules");
+  const nextPackage = path.join(nodeModules, "next");
+  if (!(await pathExists(nextPackage))) return;
+  const dependencies = (await readPackageManifest(nextPackage)).dependencies ?? {};
+  const store = path.join(nodeModules, ".pnpm");
+  if (!(await pathExists(store))) return;
+  for (const [name, version] of Object.entries(dependencies)) {
+    const target = path.join(nodeModules, name);
+    if (await pathExists(target)) continue;
+    const candidate = await findPnpmPackage(store, name, version);
+    if (candidate) await copyMaterialized(candidate, target, new Set(), new Set());
+  }
+}
+
 export async function prepareStandalone(options: StandaloneOptions = {}): Promise<{ destination: string }> {
   const workspaceRoot = path.resolve(options.workspaceRoot ?? process.cwd());
   const source = path.resolve(options.source ?? path.join(workspaceRoot, ".next", "standalone"));
@@ -77,18 +157,19 @@ export async function prepareStandalone(options: StandaloneOptions = {}): Promis
 
   await rm(destination, { recursive: true, force: true });
   try {
-    await copyMaterialized(source, destination, new Set());
+    await copyMaterialized(source, destination, new Set(), new Set());
     for (const asset of [
       { source: path.join(workspaceRoot, "public"), destination: path.join(destination, "public") },
       { source: path.join(workspaceRoot, ".next", "static"), destination: path.join(destination, ".next", "static") },
     ]) {
       try {
         await stat(asset.source);
-        await copyMaterialized(asset.source, asset.destination, new Set());
+        await copyMaterialized(asset.source, asset.destination, new Set(), new Set());
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
     }
+    await materializeNextRuntimeDependencies(destination);
     await assertNoLinks(destination);
     if (!(await stat(path.join(destination, "server.js"))).isFile() || !(await stat(path.join(destination, "node_modules"))).isDirectory()) {
       throw new Error("A entrega materializada não contém o runtime standalone completo.");

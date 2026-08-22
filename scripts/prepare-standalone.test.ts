@@ -80,4 +80,36 @@ describe("prepareStandalone", () => {
     await expect(prepareStandalone({ workspaceRoot: root, source, destination })).rejects.toThrow(/ciclo/i);
     await expect(lstat(destination)).rejects.toThrow();
   });
+
+  it("reports a pnpm-shaped broken link explicitly without touching the destination", async () => {
+    const { root, source, destination } = await fixture();
+    const packageDirectory = path.join(source, "node_modules", ".pnpm", "@img+sharp-darwin-arm64@0.35.3", "node_modules", "@img");
+    await mkdir(packageDirectory, { recursive: true });
+    const link = path.join(packageDirectory, "sharp-libvips-darwin-arm64");
+    try {
+      await symlink("../../../../@img+sharp-libvips-darwin-arm64@1.3.2/node_modules/@img/sharp-libvips-darwin-arm64", link, "file");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EPERM") return;
+      throw error;
+    }
+
+    await expect(prepareStandalone({ workspaceRoot: root, source, destination })).rejects.toThrow(/link quebrado/i);
+    await expect(lstat(destination)).rejects.toThrow();
+  });
+
+  it("promotes a traced pnpm Next runtime dependency that has no top-level link", async () => {
+    const { source, root, destination } = await fixture();
+    const next = path.join(source, "node_modules", "next");
+    const env = path.join(source, "node_modules", ".pnpm", "@next+env@1.0.0", "node_modules", "@next", "env");
+    await mkdir(next, { recursive: true });
+    await mkdir(env, { recursive: true });
+    await writeFile(path.join(next, "package.json"), JSON.stringify({ dependencies: { "@next/env": "1.0.0" } }));
+    await writeFile(path.join(env, "package.json"), JSON.stringify({ name: "@next/env", version: "1.0.0" }));
+    await writeFile(path.join(env, "index.js"), "module.exports = 'runtime env';\n");
+
+    await prepareStandalone({ workspaceRoot: root, source, destination });
+
+    expect(await readFile(path.join(destination, "node_modules", "@next", "env", "index.js"), "utf8"))
+      .toBe("module.exports = 'runtime env';\n");
+  });
 });
