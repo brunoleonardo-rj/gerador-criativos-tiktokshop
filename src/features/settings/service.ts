@@ -48,6 +48,7 @@ Timing rule: the hand gesture starts a fraction BEFORE the word and the camera m
 PRODUCT INTERACTION:
 - The product must stay pixel-consistent with the reference frame at all times. Never invent, add, or remove product features — no new pockets, buttons, zippers, seams, patterns, logos, or texture that isn't already visible in the reference frame.
 - Her skin must stay pixel-consistent with the reference frame too. Never invent, add, or remove tattoos, marks, scars, or piercings that aren't already visible in the reference frame.
+- If a phone is visible in her hand (matching the reference frame), its screen stays off or black for the entire video — never show an app, photo, thumbnail, or any interface on it.
 - If touched or held, hand pressure, grip, and movement must be realistic and proportional.
 - Hands must never cover the feature being named — they frame it, brush alongside it, or gesture toward it, always leaving the detail visible to camera.
 - No distortion, no scale changes, no visual artifacts.

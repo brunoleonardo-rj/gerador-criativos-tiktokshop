@@ -71,7 +71,7 @@ AÇÃO: {{acao}}
 
 POSE: {{pose}}
 
-ENQUADRAMENTO: da cintura para cima, pés fora de quadro por padrão, câmera fixa em tripé físico fora de quadro na altura do peito, mãos livres e relaxadas, leve ângulo de baixo para cima, foco nítido no rosto e na peça. Se o CENÁRIO, AÇÃO ou POSE acima descreverem um espelho, é uma selfie de espelho: ela deve segurar um smartphone moderno na mão, com o aparelho e o reflexo visíveis, mas a TELA do aparelho deve estar apagada ou preta — nunca mostre app aberto, fotos, miniaturas de produto, texto ou qualquer interface na tela do celular. Caso contrário, NÃO é selfie de espelho — nenhuma mão segura aparelho. {{enquadramento_extra}}
+ENQUADRAMENTO: por padrão, da cintura para cima, pés fora de quadro, mãos livres e relaxadas sem segurar nada, câmera fixa em tripé físico fora de quadro na altura do peito, leve ângulo de baixo para cima, foco nítido no rosto e na peça, e NÃO é selfie de espelho. EXCEÇÃO 1 — ESPELHO: se o CENÁRIO, AÇÃO ou POSE acima descreverem um espelho, é selfie de espelho: ela segura um smartphone moderno na mão, com o aparelho e o reflexo visíveis, mas a TELA do aparelho apagada ou preta — nunca mostre app aberto, fotos, miniaturas de produto, texto ou qualquer interface na tela do celular. EXCEÇÃO 2 — abaixo, se houver, tem prioridade sobre o padrão acima: {{enquadramento_extra}}
 
 ÁUDIO: sem áudio. Esta é uma imagem estática.
 
