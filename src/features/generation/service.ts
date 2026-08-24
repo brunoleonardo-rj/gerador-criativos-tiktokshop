@@ -18,7 +18,7 @@ export class GenerationService {
       const snapshot = await this.library.getActiveSnapshot();
       const prompt = buildAnthropicPrompt({ input, library: selectLibraryContext(snapshot, { produto: input.nomeProduto, categoria: input.categoria }), images });
       const result = await this.anthropic.generate(settings.apiKey, { model: settings.model, ...prompt }, signal);
-      return validateCreativeBatch(input, result.batch, settings.veoTemplate, settings.updatedAt.toISOString());
+      return validateCreativeBatch(input, result.batch, settings.veoTemplate, settings.geminiTemplate, settings.updatedAt.toISOString());
     } catch (error) { if (error instanceof GenerationFailure) throw error; throw new GenerationFailure("UPSTREAM_UNAVAILABLE"); }
   }
 }

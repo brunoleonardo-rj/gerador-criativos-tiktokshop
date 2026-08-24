@@ -26,6 +26,7 @@ const settings = () => ({
     apiKey: "sk-secret",
     model: "claude-test",
     veoTemplate: "Fala: {{copy_completa}}",
+    geminiTemplate: "{{produto}}",
     updatedAt: new Date("2026-01-01T00:00:00Z"),
   }),
 });

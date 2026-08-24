@@ -4,8 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ResultCard } from "./result-card";
 import { generationInputFixture, creativeBatchFixture } from "../../../tests/fixtures/creative-result";
 import { validateCreativeBatch } from "@/features/generation/validation";
+import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
 
-function result() { return validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "VEO {{copy_completa}}", "2026-08-21T12:00:00.000Z").creatives[0]; }
+function result() { return validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "VEO {{copy_completa}}", DEFAULT_GEMINI_TEMPLATE, "2026-08-21T12:00:00.000Z").creatives[0]; }
 describe("ResultCard", () => {
   afterEach(() => cleanup());
   it("offers a copy control for every displayed creative field", () => {
@@ -97,5 +98,6 @@ describe("ResultCard", () => {
     await userEvent.keyboard("{Tab}{Enter}");
     expect(screen.getAllByText(/Palavras reais:/).length).toBeGreaterThan(0);
     expect(screen.getByText(/VEO Eu deixo minha água/)).toBeInTheDocument();
+    expect(screen.getByText(/PRODUTO: Garrafa térmica/)).toBeInTheDocument();
   });
 });
