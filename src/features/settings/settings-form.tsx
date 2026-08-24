@@ -5,6 +5,13 @@ import { renderVeoTemplate, validateVeoTemplate, type VeoVariables } from "./veo
 import { renderGeminiTemplate, validateGeminiTemplate, type GeminiVariables } from "./gemini-template";
 import { LibrarySettings } from "@/features/library/library-settings";
 
+const MODEL_PRESETS = [
+  { value: "claude-opus-5", label: "Opus 5 — mais capaz" },
+  { value: "claude-sonnet-5", label: "Sonnet 5 — recomendado" },
+  { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5 — mais rápido e barato" },
+  { value: "claude-fable-5", label: "Fable 5" },
+] as const;
+
 export type PublicSettingsView = {
   apiKeyConfigured: boolean;
   apiKeyMask: string | null;
@@ -181,6 +188,11 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
 
       <section role="tabpanel" id="settings-panel-model" aria-labelledby="settings-tab-model" hidden={activeTab !== "model"} className="grid gap-4 py-6 text-[#514955]">
         <h2>Modelo</h2>
+        <label htmlFor="model-preset">Modelos comuns</label>
+        <select id="model-preset" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2" value={MODEL_PRESETS.some((preset) => preset.value === model) ? model : ""} onChange={(event) => { if (event.target.value) setModel(event.target.value); }}>
+          <option value="">Personalizado (digite abaixo)</option>
+          {MODEL_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+        </select>
         <label htmlFor="model">Modelo Anthropic</label>
         <input id="model" name="model" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2" value={model} onChange={(event) => setModel(event.target.value)} required />
       </section>

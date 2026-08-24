@@ -28,6 +28,21 @@ describe("SettingsForm", () => {
     expect(screen.getByText(/variáveis não permitidas/i)).toBeInTheDocument();
   });
 
+  it("preenche o modelo ao escolher um preset, e mostra personalizado para um id fora da lista", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm initial={publicSettingsFixture} onSave={vi.fn()} onDeleteKey={vi.fn()} />);
+
+    await user.click(screen.getByRole("tab", { name: "Modelo" }));
+    expect(screen.getByLabelText("Modelos comuns")).toHaveValue("claude-sonnet-5");
+
+    await user.selectOptions(screen.getByLabelText("Modelos comuns"), "claude-haiku-4-5-20251001");
+    expect(screen.getByLabelText("Modelo Anthropic")).toHaveValue("claude-haiku-4-5-20251001");
+
+    await user.clear(screen.getByLabelText("Modelo Anthropic"));
+    await user.type(screen.getByLabelText("Modelo Anthropic"), "claude-sonnet-4-5-20250929");
+    expect(screen.getByLabelText("Modelos comuns")).toHaveValue("");
+  });
+
   it("edita e pré-visualiza o template Gemini em uma aba própria", async () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={publicSettingsFixture} onSave={vi.fn()} onDeleteKey={vi.fn()} />);
