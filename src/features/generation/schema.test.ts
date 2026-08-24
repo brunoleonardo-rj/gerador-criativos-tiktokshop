@@ -16,4 +16,11 @@ describe("schema de geração", () => {
     expect(() => creativeBatchSchema.parse(creativeBatchFixture({ descartavel: false, motivoDescartavel: "motivo" }))).toThrow();
     expect(() => creativeBatchSchema.parse(creativeBatchFixture({ descartavel: true, motivoDescartavel: "Repetição editorial." }))).not.toThrow();
   });
+  it("aceita slots Gemini estritos e de um a quatro speech beats", () => {
+    expect(() => creativeBatchSchema.parse(creativeBatchFixture())).not.toThrow();
+    const base = creativeBatchFixture().creatives[0];
+    expect(() => creativeBatchSchema.parse(creativeBatchFixture({ geminiSlots: { ...base.geminiSlots, extra: true } }))).toThrow();
+    expect(() => creativeBatchSchema.parse(creativeBatchFixture({ speechBeats: [] }))).toThrow();
+    expect(() => creativeBatchSchema.parse(creativeBatchFixture({ speechBeats: Array.from({ length: 5 }, () => base.speechBeats[0]) }))).toThrow();
+  });
 });

@@ -9,13 +9,35 @@ export const copySegmentSchema = z.object({
   segundos: z.number().int().min(1).max(30),
 }).strict();
 
+export const geminiSlotsSchema = z.object({
+  identidadeUgc: longText,
+  produto: shortText,
+  wardrobeLock: longText,
+  tecido: longText,
+  evitar: longText,
+  calcado: shortText,
+  cenario: longText,
+  iluminacao: shortText,
+  acao: longText,
+  pose: shortText,
+  enquadramentoExtra: z.string().trim().max(500),
+}).strict();
+
+export const speechBeatSchema = z.object({
+  triggerWord: z.string().trim().min(1).max(100),
+  cameraMove: z.string().trim().min(1).max(500),
+  gesture: z.string().trim().min(1).max(500),
+  visibleResult: z.string().trim().min(1).max(500),
+}).strict();
+
 export const creativeSchema = z.object({
   id: shortText,
   angulo: shortText,
   ambiente: shortText,
   figurino: shortText,
   pose: shortText,
-  promptGemini: longText,
+  geminiSlots: geminiSlotsSchema,
+  speechBeats: z.array(speechBeatSchema).min(1).max(4),
   copy: z.object({ trecho1: copySegmentSchema, trecho2: copySegmentSchema, trecho3: copySegmentSchema.nullable() }).strict(),
   descricao: longText,
   hashtags: z.array(z.string().trim().min(1).max(100)).min(1).max(20),
@@ -61,3 +83,4 @@ export const generationInputSchema = z.object({
 
 export type GenerationInput = z.infer<typeof generationInputSchema>;
 export type CreativeBatch = z.infer<typeof creativeBatchSchema>;
+export type SpeechBeat = z.infer<typeof speechBeatSchema>;

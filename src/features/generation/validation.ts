@@ -1,12 +1,12 @@
 import { renderVeoTemplate } from "@/features/settings/veo-template";
-import { creativeBatchSchema, generationInputSchema, type CreativeBatch, type GenerationInput } from "./schema";
+import { DEFAULT_GEMINI_TEMPLATE, renderGeminiTemplate } from "@/features/settings/gemini-template";
+import { creativeBatchSchema, generationInputSchema, type CreativeBatch, type GenerationInput, type SpeechBeat } from "./schema";
 
 export type IssueSeverity = "warning" | "block";
 export type GenerationIssue = { code: string; severity: IssueSeverity; field: string; message: string };
-export type CreativeEnvelope = CreativeBatch["creatives"][number] & { veoPrompt: string | null; actualCounts: { trecho1: number; trecho2: number; trecho3: number | null; pov: number }; issues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked" };
+export type CreativeEnvelope = CreativeBatch["creatives"][number] & { promptGemini: string | null; veoPrompt: string | null; actualCounts: { trecho1: number; trecho2: number; trecho3: number | null; pov: number }; issues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked" };
 export type GenerationEnvelope = Omit<CreativeBatch, "creatives"> & { creatives: CreativeEnvelope[]; batchIssues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked"; settingsUpdatedAt: string | null };
 
-const GEMINI_BLOCKS = ["Cenário", "Pessoa", "Produto", "Ação", "Enquadramento", "Iluminação", "Áudio", "Estilo", "Restrições"] as const;
 const AMOUNT = "(?:\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?|\\d+)";
 const MONEY = new RegExp(`(?:(?:US\\$|R\\$|\\$|€|£|¥)\\s*${AMOUNT}|${AMOUNT}\\s*(?:US\\$|R\\$|\\$|€|£|¥)|\\b(?:BRL|USD|EUR|GBP|JPY)\\s*${AMOUNT}\\b|\\b${AMOUNT}\\s*(?:BRL|USD|EUR|GBP|JPY)\\b|\\b${AMOUNT}\\s*(?:reais?|real|dólares?|dolares?|euros?|libras?|ienes?|centavos?)\\b|\\b(?:reais?|real|dólares?|dolares?|euros?|libras?|ienes?|centavos?)\\s*${AMOUNT}\\b)`, "iu");
 const EMOJI = /\p{Extended_Pictographic}/gu;
@@ -19,7 +19,9 @@ export function countEmoji(text: string): number {
   return [...text.matchAll(EMOJI)].length;
 }
 export function containsMoney(text: string): boolean { return MONEY.test(text.normalize("NFC")); }
-export function requiredGeminiBlocks(prompt: string): string[] { return GEMINI_BLOCKS.filter((block) => !new RegExp(`(?:^|\\n)\\s*${block}\\s*:`, "iu").test(prompt)); }
+export function renderSpeechBeats(beats: SpeechBeat[]): string {
+  return beats.map((beat) => `- On "${beat.triggerWord}": ${beat.cameraMove} + ${beat.gesture} → ${beat.visibleResult}`).join("\n");
+}
 
 const add = (issues: GenerationIssue[], code: string, severity: IssueSeverity, field: string, message: string) => issues.push({ code, severity, field, message });
 const segmentRules: Record<number, { seconds: number[]; words: Record<number, [number, number]> }> = {
@@ -40,7 +42,7 @@ const hasAffirmativeVisualOverlay = (prompt: string): boolean => {
   return false;
 };
 
-export function validateCreativeBatch(input: GenerationInput, batch: CreativeBatch, veoTemplate: string, settingsUpdatedAt: string | null = null): GenerationEnvelope {
+export function validateCreativeBatch(input: GenerationInput, batch: CreativeBatch, veoTemplate: string, geminiTemplate = DEFAULT_GEMINI_TEMPLATE, settingsUpdatedAt: string | null = null): GenerationEnvelope {
   const safeInput = generationInputSchema.parse(input);
   const safeBatch = creativeBatchSchema.parse(batch);
   const expected = segmentRules[safeInput.duracaoTotal];
@@ -63,9 +65,22 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
       if (safeInput.politicaPreco === "sem_preco" && containsMoney(segment.texto)) add(issues, "PRICE_FORBIDDEN", "block", `${field}.texto`, "Preço não é permitido nesta geração.");
     }
     if (safeInput.politicaPreco === "sem_preco" && containsMoney(creative.descricao)) add(issues, "PRICE_FORBIDDEN", "block", "descricao", "Preço não é permitido nesta geração.");
-    const missing = requiredGeminiBlocks(creative.promptGemini);
-    if (missing.length) add(issues, "GEMINI_BLOCKS_MISSING", "block", "promptGemini", `Blocos Gemini ausentes: ${missing.join(", ")}.`);
-    if (/\b(?:remova|tire)\b[\s\S]{0,60}\broupa\b|\bsubstitua\s+a\s+roupa\b/iu.test(creative.promptGemini)) add(issues, "CLOTHING_REMOVAL", "block", "promptGemini", "O Prompt Gemini não pode instruir remoção ou troca de roupa.");
+    const slotsToValidate = [
+      ["geminiSlots.cenario", creative.geminiSlots.cenario],
+      ["geminiSlots.acao", creative.geminiSlots.acao],
+      ["geminiSlots.wardrobeLock", creative.geminiSlots.wardrobeLock],
+    ] as const;
+    for (const [field, value] of slotsToValidate) {
+      if (/\b(?:remova|tire)\b[\s\S]{0,60}\broupa\b|\bsubstitua\s+a\s+roupa\b/iu.test(value)) add(issues, "CLOTHING_REMOVAL", "block", field, "O Prompt Gemini não pode instruir remoção ou troca de roupa.");
+      if (hasAffirmativeVisualOverlay(value)) add(issues, "VISUAL_OVERLAY_FORBIDDEN", "block", field, "O Prompt Gemini não pode instruir overlays ou gráficos visuais.");
+    }
+    const spokenText = segments.filter((segment): segment is NonNullable<typeof segment> => segment !== null).map((segment) => segment.texto).join(" ");
+    const normalizedSpokenText = normalizeKey(spokenText);
+    for (const beat of creative.speechBeats) {
+      if (!normalizedSpokenText.includes(normalizeKey(beat.triggerWord))) add(issues, "SPEECH_BEAT_ORPHAN", "block", "speechBeats", `A palavra-gatilho "${beat.triggerWord}" não aparece na copy falada.`);
+    }
+    const beatWords = creative.speechBeats.map((beat) => normalizeKey(beat.triggerWord));
+    if (new Set(beatWords).size !== beatWords.length) add(issues, "SPEECH_BEAT_DUPLICATE", "warning", "speechBeats", "Há palavras-gatilho repetidas.");
     if (creative.hashtags.length !== safeInput.quantidadeHashtags) add(issues, "HASHTAG_COUNT", "block", "hashtags", "A quantidade de hashtags diverge da configuração.");
     if (creative.hashtags.some((tag) => /\d/u.test(tag))) add(issues, "HASHTAG_DIGIT", "block", "hashtags", "Hashtags não podem conter dígitos.");
     const hashtagKey = creative.hashtags.map(normalizeKey).sort().join("|");
@@ -82,13 +97,33 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     if (actualPov > safeInput.maxPalavrasPov) add(issues, "POV_WORDS", "warning", "pov.texto", "O POV ultrapassa o limite configurado.");
     if (safeInput.povComEmoji && (countEmoji(creative.pov.texto) !== 1 || countEmoji(creative.pov.emoji) !== 1)) add(issues, "POV_EMOJI", "warning", "pov", "O POV deve conter exatamente um emoji.");
     if (creative.descartavel) add(issues, "CREATIVE_DISCARDED", "warning", "motivoDescartavel", `Criativo marcado como descartável: ${creative.motivoDescartavel}`);
-    if (hasAffirmativeVisualOverlay(creative.promptGemini)) add(issues, "VISUAL_OVERLAY_FORBIDDEN", "block", "promptGemini", "O Prompt Gemini não pode instruir overlays ou gráficos visuais.");
+    let promptGemini: string | null = null;
+    try {
+      promptGemini = renderGeminiTemplate(geminiTemplate, {
+        identidade_ugc: creative.geminiSlots.identidadeUgc,
+        produto: creative.geminiSlots.produto,
+        wardrobe_lock: creative.geminiSlots.wardrobeLock,
+        tecido: creative.geminiSlots.tecido,
+        evitar: creative.geminiSlots.evitar,
+        calcado: creative.geminiSlots.calcado,
+        cenario: creative.geminiSlots.cenario,
+        iluminacao: creative.geminiSlots.iluminacao,
+        acao: creative.geminiSlots.acao,
+        pose: creative.geminiSlots.pose,
+        enquadramento_extra: creative.geminiSlots.enquadramentoExtra,
+      });
+    } catch {
+      add(issues, "GEMINI_TEMPLATE_INVALID", "block", "promptGemini", "O template Gemini possui variável inválida ou não resolvida.");
+    }
     let veoPrompt: string | null = null;
-    try { veoPrompt = renderVeoTemplate(veoTemplate, { produto: safeBatch.produtoNormalizado, copy_completa: segments.filter((segment): segment is NonNullable<typeof segment> => segment !== null).map((segment) => segment.texto).join(" "), copy_trecho1: creative.copy.trecho1.texto, copy_trecho2: creative.copy.trecho2.texto, pov: creative.pov.texto, ambiente: creative.ambiente, figurino: creative.figurino, pose: creative.pose, prompt_gemini: creative.promptGemini }); }
+    try {
+      if (promptGemini === null) throw new Error("Gemini prompt unavailable");
+      veoPrompt = renderVeoTemplate(veoTemplate, { produto: safeBatch.produtoNormalizado, copy_completa: spokenText, copy_trecho1: creative.copy.trecho1.texto, copy_trecho2: creative.copy.trecho2.texto, pov: creative.pov.texto, ambiente: creative.ambiente, figurino: creative.figurino, pose: creative.pose, prompt_gemini: promptGemini, speech_beats: renderSpeechBeats(creative.speechBeats) });
+    }
     catch { add(issues, "VEO_TEMPLATE_INVALID", "block", "veoPrompt", "O template VEO possui variável inválida ou não resolvida."); }
     const actualCounts = { trecho1: countWords(creative.copy.trecho1.texto), trecho2: countWords(creative.copy.trecho2.texto), trecho3: creative.copy.trecho3 ? countWords(creative.copy.trecho3.texto) : null, pov: actualPov };
     const status: CreativeEnvelope["status"] = issues.some((issue) => issue.severity === "block") ? "blocked" : issues.length ? "needs_review" : "valid";
-    return { ...creative, veoPrompt, actualCounts, issues, status };
+    return { ...creative, promptGemini, veoPrompt, actualCounts, issues, status };
   });
   const status = batchIssues.some((issue) => issue.severity === "block") || creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
   return { ...safeBatch, creatives, batchIssues, status, settingsUpdatedAt };

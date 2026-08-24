@@ -21,5 +21,8 @@ describe("Anthropic JSON Schema", () => {
     expect(everyObjectIsClosed(format.schema)).toBe(true);
     expect(JSON.stringify(format.schema)).not.toMatch(/"(?:minimum|maximum|minLength|maxLength|maxItems)":/);
     expect(JSON.stringify(findProperty(format.schema, "trecho3"))).toContain("null");
+    expect(findProperty(format.schema, "geminiSlots")).toBeDefined();
+    expect(findProperty(format.schema, "speechBeats")).toBeDefined();
+    expect(findProperty(format.schema, "promptGemini")).toBeUndefined();
   });
 });
