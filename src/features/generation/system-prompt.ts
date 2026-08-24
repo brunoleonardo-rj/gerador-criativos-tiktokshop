@@ -12,7 +12,7 @@ Não escreva o Prompt Gemini completo. Preencha apenas os slots em geminiSlots; 
 - evitar: lista negativa com os erros mais prováveis para esta peça específica.
 - calcado: derivado do tipo de produto. Social e alfaiataria pedem salto ou sandália; athleisure e fitness pedem tênis. Sempre diga o que NÃO usar.
 - cenario, iluminacao, acao, pose: específicos deste criativo, diferentes dos demais.
-- enquadramentoExtra: use quando o diferencial do produto exigir enquadramento especial. Caso contrário, use string vazia.
+- enquadramentoExtra: o enquadramento padrão é da cintura para cima, com os pés fora de quadro. Se o produto tiver relação direta com os pés (calçados, meias, produtos para os pés), escreva algo como "mostre o corpo inteiro, com pés e tornozelos totalmente visíveis no quadro" para sobrepor o padrão. Se o produto NÃO tiver relação com os pés, use string vazia e mantenha o padrão.
 
 Gere de um a quatro speechBeats por criativo. Cada triggerWord deve ser uma palavra ou expressão que aparece LITERALMENTE na copy falada. Priorize as características que mais vendem o produto e nunca ultrapasse quatro. Preserve continuidade visual entre os trechos, descreva ações observáveis, não use sobreposições visuais, textos na tela ou elementos gráficos dentro do vídeo e nunca instrua remover, tirar ou substituir roupas.
 

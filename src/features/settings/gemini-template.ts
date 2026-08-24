@@ -71,7 +71,7 @@ AÇÃO: {{acao}}
 
 POSE: {{pose}}
 
-ENQUADRAMENTO: corpo inteiro, câmera fixa em tripé físico fora de quadro na altura do peito, SEM celular visível nas mãos, mãos livres e relaxadas, leve ângulo de baixo para cima, foco nítido no rosto e na peça. NÃO é selfie de espelho — nenhuma mão segura aparelho. {{enquadramento_extra}}
+ENQUADRAMENTO: da cintura para cima, pés fora de quadro por padrão, câmera fixa em tripé físico fora de quadro na altura do peito, SEM celular visível nas mãos, mãos livres e relaxadas, leve ângulo de baixo para cima, foco nítido no rosto e na peça. NÃO é selfie de espelho — nenhuma mão segura aparelho. {{enquadramento_extra}}
 
 ÁUDIO: sem áudio. Esta é uma imagem estática.
 
