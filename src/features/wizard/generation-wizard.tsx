@@ -282,6 +282,7 @@ const emptyWarnings: string[] = [];
 function extractionValues(current: WizardFormValues, extraction: ProductExtraction): WizardFormValues {
   return {
     ...current,
+    linkProduto: "",
     nomeProduto: extraction.nomeProduto ?? "",
     categoria: extraction.categoria ?? "",
     descricaoPdp: extraction.descricaoPdp ?? "",
@@ -405,7 +406,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
   async function replaceProductSources(next: StoredImage[]) {
     const old = getProductSourceImages(images);
     setEditingSources(true);
-    setProductError(null);
+    setProductError(productAnalysisKey && imageSelectionKey(next) !== productAnalysisKey ? "STALE_ANALYSIS" : null);
     try {
       await Promise.all(next.filter((item) => !old.some((existing) => existing.id === item.id)).map((item) => (services.putImage ?? assetStorage.putImage)(item)));
       await Promise.all(old.filter((item) => !next.some((current) => current.id === item.id)).map((item) => (services.deleteImage ?? assetStorage.deleteImage)(item.id)));
@@ -559,7 +560,8 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
       <p className={styles.currentStep} aria-live="polite">Etapa {step + 1} de 3: {names[step]}</p>
 
       <section className={styles.contentCard} aria-label={`Etapa ${names[step]}`}>
-        {step === 0 && <ProductStep
+        {step === 0 && imageLoading && <p className={styles.loadingProduct} role="status">Carregando imagens do produto…</p>}
+        {step === 0 && !imageLoading && <ProductStep
           register={form.register}
           errors={form.formState.errors}
           images={productSources}

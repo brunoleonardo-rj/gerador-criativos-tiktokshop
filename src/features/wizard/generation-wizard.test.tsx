@@ -7,6 +7,18 @@ import { generationInputFixture, creativeBatchFixture } from "../../../tests/fix
 import { validateCreativeBatch } from "@/features/generation/validation";
 import { GenerationWizard, fromDraft, toDraft, type ProductAnalysisDraft, type WizardFormValues, type WizardServices } from "./generation-wizard";
 
+vi.mock("@/features/uploads/resize", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/uploads/resize")>()),
+  resizeImage: vi.fn(async (file: File) => ({
+    blob: new Blob([file], { type: "image/jpeg" }),
+    name: file.name,
+    type: "image/jpeg" as const,
+    width: 20,
+    height: 20,
+    size: file.size,
+  })),
+}));
+
 const base = generationInputFixture({ perfilUgc: "sem_pessoa" });
 const product: StoredImage = { id: "11111111-1111-4111-8111-111111111111", role: "product", blob: new Blob(["product"], { type: "image/jpeg" }), name: "product.jpg", type: "image/jpeg", width: 400, height: 400, size: 7 };
 const ad: StoredImage = { ...product, id: "33333333-3333-4333-8333-333333333333", role: "ad", name: "ad.jpg" };
@@ -117,6 +129,24 @@ describe("GenerationWizard", () => {
     expect(listImages).toHaveBeenCalledOnce();
   });
 
+  it("finishes restoring persisted sources before accepting a new selection", async () => {
+    let resolveImages!: (images: StoredImage[]) => void;
+    const listImages = vi.fn(() => new Promise<StoredImage[]>((resolve) => { resolveImages = resolve; }));
+    const putImage = vi.fn(async () => undefined);
+    render(<GenerationWizard services={services({ listImages, putImage })} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Carregando imagens do produto");
+    expect(screen.queryByLabelText("Fotos e prints do produto")).not.toBeInTheDocument();
+
+    await act(async () => { resolveImages([product]); });
+    const input = await screen.findByLabelText("Fotos e prints do produto");
+    expect(screen.getByAltText("Prévia de product.jpg")).toBeInTheDocument();
+    fireEvent.change(input, { target: { files: [new File(["new"], "new.jpg", { type: "image/jpeg" })] } });
+
+    expect(await screen.findByAltText("Prévia de new.jpg")).toBeInTheDocument();
+    expect(screen.getByAltText("Prévia de product.jpg")).toBeInTheDocument();
+  });
+
   it("extracts product and legacy ad sources, opens review and blocks stale analysis", async () => {
     const saveDraft = vi.fn();
     const extractProduct = vi.fn(async (form: FormData) => {
@@ -124,7 +154,7 @@ describe("GenerationWizard", () => {
       return validExtraction;
     });
     const user = userEvent.setup();
-    render(<GenerationWizard services={services({ saveDraft, listImages: async () => [product, ugc, ad], extractProduct })} />);
+    render(<GenerationWizard services={services({ saveDraft, listImages: async () => [product, ugc, ad], deleteImage: vi.fn(async () => undefined), extractProduct })} />);
 
     expect(await analyze(user)).toHaveValue("Garrafa");
     expect(screen.getByLabelText("Categoria")).toHaveValue("Casa");
@@ -135,6 +165,7 @@ describe("GenerationWizard", () => {
     await user.click(screen.getByRole("button", { name: /remover product.jpg/i }));
 
     expect(screen.getByRole("button", { name: "Continuar" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("As imagens mudaram. Analise novamente antes de continuar.");
     await waitFor(() => expect(saveDraft).toHaveBeenLastCalledWith(expect.objectContaining({ nomeProduto: "Garrafa" })));
   });
 
@@ -249,13 +280,14 @@ describe("GenerationWizard", () => {
       expect(payload.perfilUgc).toBe("sem_pessoa");
       expect(payload.ambientesPermitidos).toEqual(["cozinha"]);
       expect(payload.quantidadeCriativos).toBe(1);
+      expect(payload).not.toHaveProperty("linkProduto");
       expect(payload).not.toHaveProperty("productAnalysisKey");
       expect(payload).not.toHaveProperty("productExtractionWarnings");
       return result;
     });
     const navigate = vi.fn();
     const user = userEvent.setup();
-    render(<GenerationWizard services={services({ listImages: async () => [product, ugc, ad], generate, saveResult, navigate })} />);
+    render(<GenerationWizard services={services({ loadDraft: () => ({ ...base, linkProduto: "https://example.com/link-antigo" }), listImages: async () => [product, ugc, ad], generate, saveResult, navigate })} />);
     await analyze(user);
     await user.clear(screen.getByLabelText("Nome do produto"));
     await user.type(screen.getByLabelText("Nome do produto"), "Garrafa revisada");
