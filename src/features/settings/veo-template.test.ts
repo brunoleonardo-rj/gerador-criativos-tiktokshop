@@ -20,6 +20,7 @@ describe("VEO template", () => {
       figurino: "Conjunto casual",
       pose: "Em pé",
       prompt_gemini: "PROMPT",
+      speech_beats: '- On "leve": quick push-in + brush the fabric → fabric remains visible',
     });
 
     expect(output).toContain("Fala: Trecho um Trecho dois");
@@ -44,10 +45,28 @@ describe("VEO template", () => {
       figurino: "Conjunto casual",
       pose: "Em pé",
       prompt_gemini: "PROMPT",
+      speech_beats: "- Sem beats",
     };
 
     expect(() => renderVeoTemplate("{{produto", values)).toThrow();
     expect(() => renderVeoTemplate("{{produto}}", { ...values, produto: undefined } as never)).toThrow();
     expect(() => renderVeoTemplate("{{produto}}", { ...values, produto: "{{pendente}}" })).toThrow();
+  });
+
+  it("renderiza os speech beats no template VEO", () => {
+    const output = renderVeoTemplate("BEATS:\n{{speech_beats}}", {
+      produto: "Body splash",
+      copy_completa: "Ele fixa bem na pele",
+      copy_trecho1: "Ele fixa bem",
+      copy_trecho2: "na pele",
+      pov: "Cheiro marcante ✨",
+      ambiente: "Quarto",
+      figurino: "Conjunto casual",
+      pose: "Em pé",
+      prompt_gemini: "PROMPT",
+      speech_beats: '- On "fixa": fast push-in + point beside the bottle → label stays visible',
+    });
+
+    expect(output).toContain('On "fixa"');
   });
 });

@@ -8,6 +8,7 @@ export const VEO_VARIABLES = [
   "figurino",
   "pose",
   "prompt_gemini",
+  "speech_beats",
 ] as const;
 
 export type VeoVariables = Record<(typeof VEO_VARIABLES)[number], string>;
