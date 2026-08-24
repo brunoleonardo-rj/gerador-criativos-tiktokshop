@@ -22,17 +22,19 @@ describe("PrismaSettingsRepository", () => {
       "anthropicKeyLastFour" TEXT,
       "anthropicModel" TEXT NOT NULL DEFAULT 'claude-sonnet-5',
       "veoTemplate" TEXT NOT NULL,
+      "geminiTemplate" TEXT NOT NULL,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL
     )`);
     const repository = new PrismaSettingsRepository(client);
     const encrypted: EncryptedSecret = { ciphertext: "ciphertext", iv: "iv", tag: "tag", version: 1 };
 
-    await repository.getOrCreate("{{copy_completa}}");
-    const saved = await repository.update({ encryptedApiKey: encrypted, apiKeyLastFour: "7890", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}" });
+    const defaults = await repository.getOrCreate("{{copy_completa}}", "{{produto}}");
+    expect(defaults.geminiTemplate).toBe("{{produto}}");
+    const saved = await repository.update({ encryptedApiKey: encrypted, apiKeyLastFour: "7890", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" });
     expect(saved.encryptedApiKey).toEqual(encrypted);
     await repository.deleteApiKey();
-    expect((await repository.getOrCreate("unused")).encryptedApiKey).toBeNull();
+    expect((await repository.getOrCreate("unused", "unused")).encryptedApiKey).toBeNull();
     await client.$disconnect();
   });
 });

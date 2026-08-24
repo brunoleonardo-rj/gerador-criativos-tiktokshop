@@ -2,13 +2,15 @@ import "server-only";
 import { z } from "zod";
 import type { PublicSettings, SettingsService } from "./service";
 import { validateVeoTemplate } from "./veo-template";
+import { validateGeminiTemplate } from "./gemini-template";
 
 const updateSchema = z.object({
   apiKey: z.string().max(500).optional(),
   model: z.string().trim().min(1).max(120),
-  veoTemplate: z.string().trim().min(1).max(20_000),
+  veoTemplate: z.string().trim().min(1).max(40_000),
+  geminiTemplate: z.string().trim().min(1).max(40_000),
 }).strict();
-const MAX_SETTINGS_JSON_BYTES = 20_480;
+const MAX_SETTINGS_JSON_BYTES = 65_536;
 
 class PayloadTooLargeError extends Error {}
 
@@ -121,12 +123,14 @@ export function makeSettingsHandlers(deps: SettingsHandlerDependencies) {
         return invalidData();
       }
       if (!validateVeoTemplate(input.veoTemplate).valid) return invalidData();
+      if (!validateGeminiTemplate(input.geminiTemplate).valid) return invalidData();
 
       try {
         const apiKey = input.apiKey?.trim();
         return publicResponse(await deps.service.update({
           model: input.model,
           veoTemplate: input.veoTemplate,
+          geminiTemplate: input.geminiTemplate,
           ...(apiKey ? { apiKey } : {}),
         }));
       } catch {

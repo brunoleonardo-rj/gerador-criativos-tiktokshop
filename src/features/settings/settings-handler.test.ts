@@ -6,6 +6,7 @@ const publicSettings = {
   apiKeyMask: "••••7890",
   model: "claude-sonnet-5",
   veoTemplate: "{{copy_completa}}",
+  geminiTemplate: "{{produto}}",
   updatedAt: new Date("2026-08-21T12:00:00.000Z"),
 };
 
@@ -40,7 +41,7 @@ describe("settings handlers", () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => { throw new Error("bad origin"); } });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" }) }));
 
     expect(response.status).toBe(403);
     expect(service.update).not.toHaveBeenCalled();
@@ -58,7 +59,7 @@ describe("settings handlers", () => {
 
     const response = await handlers.PUT(new Request("http://local/api/settings", {
       method: "PUT",
-      headers: { "content-type": "application/json", "content-length": "20481" },
+      headers: { "content-type": "application/json", "content-length": "65537" },
       body: "{}",
     }));
 
@@ -72,7 +73,7 @@ describe("settings handlers", () => {
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode("x".repeat(20_481)));
+        controller.enqueue(new TextEncoder().encode("x".repeat(65_537)));
         controller.close();
       },
     });
@@ -92,32 +93,33 @@ describe("settings handlers", () => {
   it("aceita um JSON válido próximo ao limite", async () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
-    const veoTemplate = "{{copy_completa}}" + "a".repeat(20_000 - "{{copy_completa}}".length);
+    const veoTemplate = "{{copy_completa}}" + "a".repeat(30_000 - "{{copy_completa}}".length);
+    const geminiTemplate = "{{produto}}" + "b".repeat(30_000 - "{{produto}}".length);
 
     const response = await handlers.PUT(new Request("http://local/api/settings", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate }),
+      body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate, geminiTemplate }),
     }));
 
     expect(response.status).toBe(200);
-    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate });
+    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate, geminiTemplate });
   });
 
   it("valida entrada de atualização sem substituir a chave quando ela está em branco", async () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ apiKey: "", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ apiKey: "", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" }) }));
 
     expect(response.status).toBe(200);
-    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}" });
+    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" });
   });
 
   it("retorna erro de validação sem detalhes internos", async () => {
     const handlers = makeSettingsHandlers({ service: makeService(), requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "", veoTemplate: "" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "", veoTemplate: "", geminiTemplate: "" }) }));
 
     expect(response.status).toBe(422);
     expect(await response.json()).toEqual({ message: "Dados de configuração inválidos" });
@@ -138,7 +140,7 @@ describe("settings handlers", () => {
     service.update.mockRejectedValue(new Error("sk-ant-secret must not leak"));
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" }) }));
 
     expect(response.status).toBe(500);
     expect(await response.text()).not.toContain("sk-ant-secret");

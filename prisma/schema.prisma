@@ -22,6 +22,7 @@ model AppSettings {
   anthropicKeyLastFour   String?
   anthropicModel         String   @default("claude-sonnet-5")
   veoTemplate            String
+  geminiTemplate         String
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 }

@@ -2,6 +2,7 @@ import "server-only";
 import { decryptSecret, encryptSecret } from "./crypto";
 import type { SettingsRepository } from "./repository";
 import { validateVeoTemplate } from "./veo-template";
+import { DEFAULT_GEMINI_TEMPLATE, validateGeminiTemplate } from "./gemini-template";
 
 export const DEFAULT_VEO_TEMPLATE = `Create a highly realistic 9:16 vertical video using the provided frame as the visual reference.
 Preserve the identity, product, environment, lighting direction, and overall composition shown in the image, while allowing natural motion and continuity to bring the scene to life.
@@ -61,35 +62,41 @@ export type PublicSettings = {
   apiKeyMask: string | null;
   model: string;
   veoTemplate: string;
+  geminiTemplate: string;
   updatedAt: Date;
 };
 
-export type GenerationSettings = { apiKey: string; model: string; veoTemplate: string; updatedAt: Date };
+export type GenerationSettings = { apiKey: string; model: string; veoTemplate: string; geminiTemplate: string; updatedAt: Date };
 
 export class SettingsService {
   constructor(
     private readonly repository: SettingsRepository,
     private readonly encryptionKey: Buffer,
     private readonly defaultTemplate = DEFAULT_VEO_TEMPLATE,
+    private readonly defaultGeminiTemplate = DEFAULT_GEMINI_TEMPLATE,
   ) {}
 
   async getPublic(): Promise<PublicSettings> {
-    const settings = await this.repository.getOrCreate(this.defaultTemplate);
+    const settings = await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate);
     return {
       apiKeyConfigured: settings.encryptedApiKey !== null,
       apiKeyMask: settings.apiKeyLastFour ? `••••${settings.apiKeyLastFour}` : null,
       model: settings.model,
       veoTemplate: settings.veoTemplate,
+      geminiTemplate: settings.geminiTemplate,
       updatedAt: settings.updatedAt,
     };
   }
 
-  async update(input: { apiKey?: string; model: string; veoTemplate: string }): Promise<PublicSettings> {
+  async update(input: { apiKey?: string; model: string; veoTemplate: string; geminiTemplate: string }): Promise<PublicSettings> {
     const validation = validateVeoTemplate(input.veoTemplate);
     if (!validation.valid) throw new Error(`Template VEO contém variáveis não permitidas: ${validation.unknown.join(", ")}.`);
+    const geminiValidation = validateGeminiTemplate(input.geminiTemplate);
+    if (!geminiValidation.valid) throw new Error(`Template Gemini contém variáveis não permitidas: ${geminiValidation.unknown.join(", ")}.`);
     const updated = await this.repository.update({
       model: input.model,
       veoTemplate: input.veoTemplate,
+      geminiTemplate: input.geminiTemplate,
       ...(input.apiKey === undefined ? {} : { encryptedApiKey: encryptSecret(input.apiKey, this.encryptionKey), apiKeyLastFour: input.apiKey.slice(-4) }),
     });
     return {
@@ -97,18 +104,19 @@ export class SettingsService {
       apiKeyMask: updated.apiKeyLastFour ? `••••${updated.apiKeyLastFour}` : null,
       model: updated.model,
       veoTemplate: updated.veoTemplate,
+      geminiTemplate: updated.geminiTemplate,
       updatedAt: updated.updatedAt,
     };
   }
 
   async deleteApiKey(): Promise<void> {
-    await this.repository.getOrCreate(this.defaultTemplate);
+    await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate);
     await this.repository.deleteApiKey();
   }
 
   async getGenerationSettings(): Promise<GenerationSettings> {
-    const settings = await this.repository.getOrCreate(this.defaultTemplate);
+    const settings = await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate);
     if (!settings.encryptedApiKey) throw new Error("A chave da Anthropic não está configurada.");
-    return { apiKey: decryptSecret(settings.encryptedApiKey, this.encryptionKey), model: settings.model, veoTemplate: settings.veoTemplate, updatedAt: settings.updatedAt };
+    return { apiKey: decryptSecret(settings.encryptedApiKey, this.encryptionKey), model: settings.model, veoTemplate: settings.veoTemplate, geminiTemplate: settings.geminiTemplate, updatedAt: settings.updatedAt };
   }
 }

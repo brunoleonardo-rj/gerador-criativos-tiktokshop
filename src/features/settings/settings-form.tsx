@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { renderVeoTemplate, validateVeoTemplate, type VeoVariables } from "./veo-template";
+import { renderGeminiTemplate, validateGeminiTemplate, type GeminiVariables } from "./gemini-template";
 import { LibrarySettings } from "@/features/library/library-settings";
 
 export type PublicSettingsView = {
@@ -9,16 +10,18 @@ export type PublicSettingsView = {
   apiKeyMask: string | null;
   model: string;
   veoTemplate: string;
+  geminiTemplate: string;
   updatedAt: string;
 };
 
-type SettingsUpdate = { apiKey?: string; model: string; veoTemplate: string };
-type Tab = "credential" | "model" | "template" | "library";
+type SettingsUpdate = { apiKey?: string; model: string; veoTemplate: string; geminiTemplate: string };
+type Tab = "credential" | "model" | "template" | "gemini" | "library";
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: "credential", label: "Credencial" },
   { id: "model", label: "Modelo" },
   { id: "template", label: "Prompt VEO 3" },
+  { id: "gemini", label: "Prompt Gemini" },
   { id: "library", label: "Biblioteca" },
 ];
 
@@ -32,6 +35,21 @@ const previewValues: VeoVariables = {
   figurino: "camiseta branca casual",
   pose: "segurando a garrafa perto da câmera",
   prompt_gemini: "Vídeo UGC vertical, luz natural e demonstração do produto.",
+  speech_beats: '- On "gelada": quick push-in + gesture beside the bottle → bottle remains visible',
+};
+
+const geminiPreviewValues: GeminiVariables = {
+  identidade_ugc: "Preserve exatamente a pessoa das imagens de referência.",
+  produto: "Garrafa térmica Aurora",
+  wardrobe_lock: "Roupa casual neutra sem estampas.",
+  tecido: "Malha lisa com caimento natural.",
+  evitar: "Não adicionar logotipos ou acessórios.",
+  calcado: "Tênis neutro, não usar salto.",
+  cenario: "cozinha iluminada",
+  iluminacao: "luz natural lateral",
+  acao: "mostrar a garrafa sem cobrir o produto",
+  pose: "em pé, postura relaxada",
+  enquadramento_extra: "",
 };
 
 async function defaultSave(input: SettingsUpdate): Promise<PublicSettingsView> {
@@ -59,10 +77,12 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(initial.model);
   const [veoTemplate, setVeoTemplate] = useState(initial.veoTemplate);
+  const [geminiTemplate, setGeminiTemplate] = useState(initial.geminiTemplate);
   const [status, setStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const tabsRef = useRef<Array<HTMLButtonElement | null>>([]);
   const templateValidation = useMemo(() => validateVeoTemplate(veoTemplate), [veoTemplate]);
+  const geminiTemplateValidation = useMemo(() => validateGeminiTemplate(geminiTemplate), [geminiTemplate]);
   const preview = useMemo(() => {
     if (!templateValidation.valid) return veoTemplate;
     try {
@@ -71,6 +91,14 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
       return veoTemplate;
     }
   }, [templateValidation, veoTemplate]);
+  const geminiPreview = useMemo(() => {
+    if (!geminiTemplateValidation.valid) return geminiTemplate;
+    try {
+      return renderGeminiTemplate(geminiTemplate, geminiPreviewValues);
+    } catch {
+      return geminiTemplate;
+    }
+  }, [geminiTemplate, geminiTemplateValidation]);
 
   function selectTab(tab: Tab) {
     setActiveTab(tab);
@@ -90,16 +118,22 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
       setStatus("Corrija as variáveis não permitidas do template antes de salvar.");
       return;
     }
+    if (!geminiTemplateValidation.valid) {
+      setActiveTab("gemini");
+      setStatus("Corrija as variáveis não permitidas do template Gemini antes de salvar.");
+      return;
+    }
     setIsSaving(true);
     setStatus(null);
     try {
-      const saved = await onSave({ model: model.trim(), veoTemplate: veoTemplate.trim(), ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) });
+      const saved = await onSave({ model: model.trim(), veoTemplate: veoTemplate.trim(), geminiTemplate: geminiTemplate.trim(), ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) });
       if (saved) {
         setSettings(saved);
         setModel(saved.model);
         setVeoTemplate(saved.veoTemplate);
+        setGeminiTemplate(saved.geminiTemplate);
       } else {
-        setSettings((current) => ({ ...current, model: model.trim(), veoTemplate: veoTemplate.trim() }));
+        setSettings((current) => ({ ...current, model: model.trim(), veoTemplate: veoTemplate.trim(), geminiTemplate: geminiTemplate.trim() }));
       }
       setApiKey("");
       setStatus("Configurações salvas.");
@@ -157,10 +191,20 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
         <h2>Prompt VEO 3</h2>
         <label htmlFor="veo-template">Template VEO 3</label>
         <textarea id="veo-template" name="veoTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={8} value={veoTemplate} onChange={(event) => setVeoTemplate(event.target.value)} aria-invalid={!templateValidation.valid} aria-describedby={`veo-template-help${templateValidation.valid ? "" : " veo-template-error"}`} required />
-        <p id="veo-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{copy_completa}}"}, {"{{copy_trecho1}}"}, {"{{copy_trecho2}}"}, {"{{pov}}"}, {"{{ambiente}}"}, {"{{figurino}}"}, {"{{pose}}"} e {"{{prompt_gemini}}"}.</p>
+        <p id="veo-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{copy_completa}}"}, {"{{copy_trecho1}}"}, {"{{copy_trecho2}}"}, {"{{pov}}"}, {"{{ambiente}}"}, {"{{figurino}}"}, {"{{pose}}"}, {"{{prompt_gemini}}"} e {"{{speech_beats}}"}.</p>
         {!templateValidation.valid && <p id="veo-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {templateValidation.unknown.join(", ")}.</p>}
         <h3>Prévia com dados fictícios</h3>
         <output className="whitespace-pre-wrap rounded-xl bg-[#fff6f3] p-4 text-sm leading-6 text-[#201a22]">{preview}</output>
+      </section>
+
+      <section role="tabpanel" id="settings-panel-gemini" aria-labelledby="settings-tab-gemini" hidden={activeTab !== "gemini"} className="grid gap-4 py-6 text-[#514955]">
+        <h2>Prompt Gemini</h2>
+        <label htmlFor="gemini-template">Template Gemini</label>
+        <textarea id="gemini-template" name="geminiTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={12} value={geminiTemplate} onChange={(event) => setGeminiTemplate(event.target.value)} aria-invalid={!geminiTemplateValidation.valid} aria-describedby={`gemini-template-help${geminiTemplateValidation.valid ? "" : " gemini-template-error"}`} required />
+        <p id="gemini-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{identidade_ugc}}"}, {"{{produto}}"}, {"{{wardrobe_lock}}"}, {"{{tecido}}"}, {"{{evitar}}"}, {"{{calcado}}"}, {"{{cenario}}"}, {"{{iluminacao}}"}, {"{{acao}}"}, {"{{pose}}"} e {"{{enquadramento_extra}}"}.</p>
+        {!geminiTemplateValidation.valid && <p id="gemini-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {geminiTemplateValidation.unknown.join(", ")}.</p>}
+        <h3>Prévia com dados fictícios</h3>
+        <output className="whitespace-pre-wrap rounded-xl bg-[#fff6f3] p-4 text-sm leading-6 text-[#201a22]">{geminiPreview}</output>
       </section>
 
       <section role="tabpanel" id="settings-panel-library" aria-labelledby="settings-tab-library" hidden={activeTab !== "library"} className="grid gap-4 py-6 text-[#514955]">

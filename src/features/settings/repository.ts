@@ -7,12 +7,13 @@ export type SettingsRecord = {
   apiKeyLastFour: string | null;
   model: string;
   veoTemplate: string;
+  geminiTemplate: string;
   updatedAt: Date;
 };
 
 export interface SettingsRepository {
-  getOrCreate(defaultTemplate: string): Promise<SettingsRecord>;
-  update(input: { encryptedApiKey?: EncryptedSecret; apiKeyLastFour?: string; model: string; veoTemplate: string }): Promise<SettingsRecord>;
+  getOrCreate(defaultTemplate: string, defaultGeminiTemplate: string): Promise<SettingsRecord>;
+  update(input: { encryptedApiKey?: EncryptedSecret; apiKeyLastFour?: string; model: string; veoTemplate: string; geminiTemplate: string }): Promise<SettingsRecord>;
   deleteApiKey(): Promise<void>;
 }
 
@@ -24,13 +25,14 @@ type AppSettingsRow = {
   anthropicKeyLastFour: string | null;
   anthropicModel: string;
   veoTemplate: string;
+  geminiTemplate: string;
   updatedAt: Date;
 };
 
 function toRecord(row: AppSettingsRow): SettingsRecord {
   const parts = [row.anthropicKeyCiphertext, row.anthropicKeyIv, row.anthropicKeyTag, row.anthropicKeyVersion];
   if (parts.every((part) => part === null)) {
-    return { encryptedApiKey: null, apiKeyLastFour: row.anthropicKeyLastFour, model: row.anthropicModel, veoTemplate: row.veoTemplate, updatedAt: row.updatedAt };
+    return { encryptedApiKey: null, apiKeyLastFour: row.anthropicKeyLastFour, model: row.anthropicModel, veoTemplate: row.veoTemplate, geminiTemplate: row.geminiTemplate, updatedAt: row.updatedAt };
   }
   if (typeof row.anthropicKeyCiphertext !== "string" || typeof row.anthropicKeyIv !== "string" || typeof row.anthropicKeyTag !== "string" || row.anthropicKeyVersion !== 1) {
     throw new Error("A credencial armazenada está incompleta.");
@@ -40,6 +42,7 @@ function toRecord(row: AppSettingsRow): SettingsRecord {
     apiKeyLastFour: row.anthropicKeyLastFour,
     model: row.anthropicModel,
     veoTemplate: row.veoTemplate,
+    geminiTemplate: row.geminiTemplate,
     updatedAt: row.updatedAt,
   };
 }
@@ -47,16 +50,19 @@ function toRecord(row: AppSettingsRow): SettingsRecord {
 export class PrismaSettingsRepository implements SettingsRepository {
   constructor(private readonly client: Pick<PrismaClient, "appSettings">) {}
 
-  async getOrCreate(defaultTemplate: string): Promise<SettingsRecord> {
-    const row = await this.client.appSettings.upsert({
+  async getOrCreate(defaultTemplate: string, defaultGeminiTemplate: string): Promise<SettingsRecord> {
+    let row = await this.client.appSettings.upsert({
       where: { id: "singleton" },
-      create: { id: "singleton", veoTemplate: defaultTemplate },
+      create: { id: "singleton", veoTemplate: defaultTemplate, geminiTemplate: defaultGeminiTemplate },
       update: {},
     });
+    if (row.geminiTemplate === "") {
+      row = await this.client.appSettings.update({ where: { id: "singleton" }, data: { geminiTemplate: defaultGeminiTemplate } });
+    }
     return toRecord(row);
   }
 
-  async update(input: { encryptedApiKey?: EncryptedSecret; apiKeyLastFour?: string; model: string; veoTemplate: string }): Promise<SettingsRecord> {
+  async update(input: { encryptedApiKey?: EncryptedSecret; apiKeyLastFour?: string; model: string; veoTemplate: string; geminiTemplate: string }): Promise<SettingsRecord> {
     const keyData = input.encryptedApiKey
       ? {
           anthropicKeyCiphertext: input.encryptedApiKey.ciphertext,
@@ -68,8 +74,8 @@ export class PrismaSettingsRepository implements SettingsRepository {
       : {};
     const row = await this.client.appSettings.upsert({
       where: { id: "singleton" },
-      create: { id: "singleton", anthropicModel: input.model, veoTemplate: input.veoTemplate, ...keyData },
-      update: { anthropicModel: input.model, veoTemplate: input.veoTemplate, ...keyData },
+      create: { id: "singleton", anthropicModel: input.model, veoTemplate: input.veoTemplate, geminiTemplate: input.geminiTemplate, ...keyData },
+      update: { anthropicModel: input.model, veoTemplate: input.veoTemplate, geminiTemplate: input.geminiTemplate, ...keyData },
     });
     return toRecord(row);
   }

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SettingsForm, type PublicSettingsView } from "./settings-form";
@@ -8,6 +8,7 @@ const publicSettingsFixture: PublicSettingsView = {
   apiKeyMask: "••••7890",
   model: "claude-sonnet-5",
   veoTemplate: "{{copy_completa}}",
+  geminiTemplate: "{{produto}}",
   updatedAt: "2026-08-21T12:00:00.000Z",
 };
 
@@ -25,6 +26,17 @@ describe("SettingsForm", () => {
 
     expect(screen.getByText(/Fala:/, { selector: "output" })).toBeInTheDocument();
     expect(screen.getByText(/variáveis não permitidas/i)).toBeInTheDocument();
+  });
+
+  it("edita e pré-visualiza o template Gemini em uma aba própria", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm initial={publicSettingsFixture} onSave={vi.fn()} onDeleteKey={vi.fn()} />);
+
+    await user.click(screen.getByRole("tab", { name: "Prompt Gemini" }));
+    const editor = screen.getByLabelText("Template Gemini");
+    fireEvent.change(editor, { target: { value: "Produto: {{produto}}" } });
+
+    expect(screen.getByText(/Produto: Garrafa térmica Aurora/, { selector: "output" })).toBeInTheDocument();
   });
 
   it("descreve o template somente com ids existentes", async () => {
@@ -47,7 +59,7 @@ describe("SettingsForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Salvar configurações" }));
 
-    expect(onSave).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}" });
+    expect(onSave).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" });
     expect(screen.getByLabelText("Nova chave da Anthropic")).toHaveValue("");
   });
 
@@ -63,7 +75,7 @@ describe("SettingsForm", () => {
 
   it("atualiza a máscara pública após substituir a chave", async () => {
     const user = userEvent.setup();
-    const onSave = vi.fn().mockResolvedValue({ ...publicSettingsFixture, apiKeyMask: "••••4321", model: "claude-updated", veoTemplate: "Fala {{copy_completa}}", updatedAt: "2026-08-21T12:01:00.000Z" });
+    const onSave = vi.fn().mockResolvedValue({ ...publicSettingsFixture, apiKeyMask: "••••4321", model: "claude-updated", veoTemplate: "Fala {{copy_completa}}", geminiTemplate: "Produto {{produto}}", updatedAt: "2026-08-21T12:01:00.000Z" });
     render(<SettingsForm initial={publicSettingsFixture} onSave={onSave} onDeleteKey={vi.fn()} />);
 
     await user.type(screen.getByLabelText("Nova chave da Anthropic"), "sk-ant-new-4321");
@@ -74,6 +86,7 @@ describe("SettingsForm", () => {
     expect(screen.getByLabelText("Nova chave da Anthropic")).toHaveValue("");
     expect(screen.getByLabelText("Modelo Anthropic")).toHaveValue("claude-updated");
     expect(screen.getByLabelText("Template VEO 3")).toHaveValue("Fala {{copy_completa}}");
+    expect(screen.getByLabelText("Template Gemini")).toHaveValue("Produto {{produto}}");
   });
 
   it("remove imediatamente a máscara e a ação após excluir a chave", async () => {
