@@ -96,7 +96,9 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     if (creative.pov.palavras !== actualPov) add(issues, "POV_DECLARED_WORDS", "warning", "pov.palavras", "A contagem declarada diverge da contagem real.");
     if (actualPov > safeInput.maxPalavrasPov) add(issues, "POV_WORDS", "warning", "pov.texto", "O POV ultrapassa o limite configurado.");
     if (safeInput.povComEmoji && (countEmoji(creative.pov.texto) !== 1 || countEmoji(creative.pov.emoji) !== 1)) add(issues, "POV_EMOJI", "warning", "pov", "O POV deve conter exatamente um emoji.");
-    if (creative.descartavel) add(issues, "CREATIVE_DISCARDED", "warning", "motivoDescartavel", `Criativo marcado como descartável: ${creative.motivoDescartavel}`);
+    if (creative.descartavel && !creative.motivoDescartavel) add(issues, "DISCARD_REASON_MISSING", "block", "motivoDescartavel", "O criativo foi marcado como descartável sem justificativa.");
+    if (!creative.descartavel && creative.motivoDescartavel) add(issues, "DISCARD_REASON_UNEXPECTED", "warning", "motivoDescartavel", "Uma justificativa de descarte foi ignorada porque o criativo não foi marcado como descartável.");
+    if (creative.descartavel && creative.motivoDescartavel) add(issues, "CREATIVE_DISCARDED", "warning", "motivoDescartavel", `Criativo marcado como descartável: ${creative.motivoDescartavel}`);
     let promptGemini: string | null = null;
     try {
       promptGemini = renderGeminiTemplate(geminiTemplate, {
@@ -123,7 +125,7 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     catch { add(issues, "VEO_TEMPLATE_INVALID", "block", "veoPrompt", "O template VEO possui variável inválida ou não resolvida."); }
     const actualCounts = { trecho1: countWords(creative.copy.trecho1.texto), trecho2: countWords(creative.copy.trecho2.texto), trecho3: creative.copy.trecho3 ? countWords(creative.copy.trecho3.texto) : null, pov: actualPov };
     const status: CreativeEnvelope["status"] = issues.some((issue) => issue.severity === "block") ? "blocked" : issues.length ? "needs_review" : "valid";
-    return { ...creative, promptGemini, veoPrompt, actualCounts, issues, status };
+    return { ...creative, motivoDescartavel: creative.descartavel ? creative.motivoDescartavel : null, promptGemini, veoPrompt, actualCounts, issues, status };
   });
   const status = batchIssues.some((issue) => issue.severity === "block") || creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
   return { ...safeBatch, creatives, batchIssues, status, settingsUpdatedAt };

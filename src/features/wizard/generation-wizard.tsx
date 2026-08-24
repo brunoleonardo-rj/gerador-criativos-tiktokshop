@@ -275,7 +275,7 @@ const submissionErrorMessages: Record<string, string> = {
   RATE_LIMITED: "O limite de uso foi atingido. Tente novamente em instantes.",
   REFUSAL: "A geração foi recusada. Ajuste o briefing e tente novamente.",
   TIMEOUT: "A geração demorou mais que o esperado.",
-  INVALID_MODEL_OUTPUT: "A resposta recebida precisa ser gerada novamente.",
+  INVALID_MODEL_OUTPUT: "A resposta não pôde ser recuperada. Para evitar nova cobrança, não gere novamente com os mesmos dados. Reduza a quantidade de criativos antes de tentar uma vez.",
   UPSTREAM_UNAVAILABLE: "O serviço está indisponível no momento.",
 };
 const emptyWarnings: string[] = [];
@@ -310,6 +310,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
   const [editingSources, setEditingSources] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [invalidGenerationQuantity, setInvalidGenerationQuantity] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const restored = useRef(false);
   const skipInitialPersist = useRef(true);
@@ -328,6 +329,8 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
   const productWarnings = productAnalysis.productExtractionWarnings ?? emptyWarnings;
   const analysisFresh = productSources.length > 0 && productSources.length <= 8 && productAnalysisKey === currentSelectionKey;
   const productState: ProductStepState = analyzing ? "analyzing" : analysisFresh && !editingSources ? "review" : "upload";
+  const invalidOutputIsUnchanged = submissionError === submissionErrorMessages.INVALID_MODEL_OUTPUT && values.quantidadeCriativos === invalidGenerationQuantity;
+  const visibleSubmissionError = submissionError === submissionErrorMessages.INVALID_MODEL_OUTPUT && !invalidOutputIsUnchanged ? null : submissionError;
 
   useEffect(() => {
     mounted.current = true;
@@ -512,6 +515,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
 
     setGenerating(true);
     setSubmissionError(null);
+    setInvalidGenerationQuantity(null);
     try {
       const data = new FormData();
       data.set("payload", JSON.stringify(input));
@@ -526,6 +530,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
     } catch (error) {
       const code = failureCode(error);
       setSubmissionError(submissionErrorMessages[code] ?? submissionErrorMessages.UPSTREAM_UNAVAILABLE);
+      if (code === "INVALID_MODEL_OUTPUT") setInvalidGenerationQuantity(form.getValues("quantidadeCriativos"));
     } finally {
       submitting.current = false;
       setGenerating(false);
@@ -587,18 +592,20 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
         />}
         {step === 2 && <DirectionStep register={form.register} errors={form.formState.errors} />}
 
-        {submissionError && <div className={styles.submissionError} role="alert">
-          <p>{submissionError}</p>
-          {submissionError === submissionErrorMessages.API_NOT_CONFIGURED
+        {visibleSubmissionError && <div className={styles.submissionError} role="alert">
+          <p>{visibleSubmissionError}</p>
+          {visibleSubmissionError === submissionErrorMessages.API_NOT_CONFIGURED
             ? <a className={styles.inlineLink} href="/configuracoes">Abrir Configurações</a>
-            : <button className={styles.inlineButton} type="button" onClick={() => void submit()}>Tentar novamente</button>}
+            : visibleSubmissionError !== submissionErrorMessages.INVALID_MODEL_OUTPUT
+              ? <button className={styles.inlineButton} type="button" onClick={() => void submit()}>Tentar novamente</button>
+              : null}
         </div>}
 
         <footer className={styles.wizardActions}>
           {step > 0 && <button className={styles.backButton} type="button" onClick={() => setStep((current) => current - 1)} disabled={generating}>Voltar</button>}
           {step < 2
             ? <button className={styles.continueButton} type="button" onClick={() => void next()} disabled={generating || analyzing || (step === 0 && (!analysisFresh || editingSources))}>Continuar</button>
-            : <button className={styles.continueButton} type="button" onClick={() => void submit()} disabled={generating}>{generating ? "Gerando…" : "Gerar criativos"}</button>}
+            : <button className={styles.continueButton} type="button" onClick={() => void submit()} disabled={generating || invalidOutputIsUnchanged}>{generating ? "Gerando…" : "Gerar criativos"}</button>}
         </footer>
       </section>
     </div>

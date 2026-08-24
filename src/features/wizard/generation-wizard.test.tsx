@@ -322,6 +322,26 @@ describe("GenerationWizard", () => {
     resolveSave();
     await waitFor(() => expect(navigate).toHaveBeenCalledWith(expect.stringMatching(/^\/resultado\//)));
   });
+
+  it("não incentiva uma nova chamada paga quando a resposta do modelo é inválida", async () => {
+    const generate = vi.fn().mockRejectedValue(new Error("INVALID_MODEL_OUTPUT"));
+    const user = userEvent.setup();
+    render(<GenerationWizard services={services({ loadDraft: () => ({ ...base, productAnalysisKey: productSelectionKey }), listImages: async () => [product], generate })} />);
+
+    await screen.findByLabelText("Nome do produto");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Gerar criativos" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("não gere novamente com os mesmos dados");
+    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gerar criativos" })).toBeDisabled();
+    await user.clear(screen.getByLabelText("Quantidade de criativos"));
+    await user.type(screen.getByLabelText("Quantidade de criativos"), "2");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gerar criativos" })).toBeEnabled();
+    expect(generate).toHaveBeenCalledOnce();
+  });
 });
 
 afterEach(() => {

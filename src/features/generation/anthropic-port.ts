@@ -11,17 +11,43 @@ export type AnthropicResult = { batch: CreativeBatch; usage: { inputTokens: numb
 export interface AnthropicPort { generate(apiKey: string, request: AnthropicRequest, signal: AbortSignal): Promise<AnthropicResult>; }
 type Client = Pick<Anthropic, "messages">;
 
+function warnInvalidOutput(response: { _request_id?: string | null; stop_reason?: string | null; usage?: { output_tokens?: number | null } }, reason: string, issues: Array<{ path: PropertyKey[]; code: string }> = []): void {
+  console.warn("[generation] invalid structured output", {
+    requestId: response._request_id ?? null,
+    stopReason: response.stop_reason ?? null,
+    outputTokens: response.usage?.output_tokens ?? 0,
+    reason,
+    issues: issues.slice(0, 5).map((issue) => ({ path: issue.path.map(String).join("."), code: issue.code })),
+  });
+}
+
 export class AnthropicSdkAdapter implements AnthropicPort {
   constructor(private readonly makeClient: (apiKey: string) => Client = (apiKey) => new Anthropic({ apiKey, maxRetries: 0 })) {}
   async generate(apiKey: string, request: AnthropicRequest, signal: AbortSignal): Promise<AnthropicResult> {
     try {
-      const response = await this.makeClient(apiKey).messages.create({ model: request.model, max_tokens: 16_000, system: request.system, messages: request.messages, output_config: { format: getAnthropicOutputFormat() } }, { signal });
+      const response = await this.makeClient(apiKey).messages.create({ model: request.model, max_tokens: 32_000, system: request.system, messages: request.messages, output_config: { format: getAnthropicOutputFormat() } }, { signal });
       if (response.stop_reason === "refusal") throw new GenerationFailure("REFUSAL");
-      if (response.stop_reason === "max_tokens" || response.stop_reason === "model_context_window_exceeded") throw new GenerationFailure("INVALID_MODEL_OUTPUT");
+      if (response.stop_reason === "max_tokens" || response.stop_reason === "model_context_window_exceeded") {
+        warnInvalidOutput(response, response.stop_reason);
+        throw new GenerationFailure("INVALID_MODEL_OUTPUT");
+      }
       const texts = response.content.filter((block): block is Extract<typeof block, { type: "text" }> => block.type === "text");
-      if (texts.length !== 1 || !texts[0].text.trim()) throw new GenerationFailure("INVALID_MODEL_OUTPUT");
-      let batch: CreativeBatch;
-      try { batch = creativeBatchSchema.parse(JSON.parse(texts[0].text)); } catch { throw new GenerationFailure("INVALID_MODEL_OUTPUT"); }
+      if (texts.length !== 1 || !texts[0].text.trim()) {
+        warnInvalidOutput(response, "unexpected_content");
+        throw new GenerationFailure("INVALID_MODEL_OUTPUT");
+      }
+      let decoded: unknown;
+      try { decoded = JSON.parse(texts[0].text); }
+      catch {
+        warnInvalidOutput(response, "invalid_json");
+        throw new GenerationFailure("INVALID_MODEL_OUTPUT");
+      }
+      const parsed = creativeBatchSchema.safeParse(decoded);
+      if (!parsed.success) {
+        warnInvalidOutput(response, "schema_validation_failed", parsed.error.issues);
+        throw new GenerationFailure("INVALID_MODEL_OUTPUT");
+      }
+      const batch: CreativeBatch = parsed.data;
       return { batch, usage: { inputTokens: response.usage.input_tokens ?? 0, outputTokens: response.usage.output_tokens ?? 0, cacheReadTokens: response.usage.cache_read_input_tokens ?? 0, cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0 } };
     } catch (error) { throw failureForAnthropic(error, signal); }
   }

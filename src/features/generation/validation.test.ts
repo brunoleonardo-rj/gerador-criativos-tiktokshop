@@ -81,6 +81,17 @@ describe("validação editorial", () => {
     expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "CREATIVE_DISCARDED", severity: "warning", field: "motivoDescartavel", message: expect.stringContaining("Repetição") }));
     expect(report.creatives[0].status).toBe("needs_review");
   });
+  it("preserva como resultado revisável uma justificativa indevida de descarte", () => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ descartavel: false, motivoDescartavel: "Não se aplica." }), "{{copy_completa}}");
+    expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "DISCARD_REASON_UNEXPECTED", severity: "warning", field: "motivoDescartavel" }));
+    expect(report.creatives[0].motivoDescartavel).toBeNull();
+    expect(report.creatives[0].status).toBe("needs_review");
+  });
+  it("preserva como resultado bloqueado um descarte sem justificativa", () => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ descartavel: true, motivoDescartavel: null }), "{{copy_completa}}");
+    expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "DISCARD_REASON_MISSING", severity: "block", field: "motivoDescartavel" }));
+    expect(report.creatives[0].status).toBe("blocked");
+  });
   it.each(["US$ 10", "$ 15.99", "€20", "£ 9", "¥ 300", "GBP 4.50", "JPY 500", "10 dólares", "euro 3", "5 libras", "20 ienes", "50 centavos"]) ("detecta dinheiro em forma comum: %s", (text) => expect(containsMoney(text)).toBe(true));
   it.each(["modelo 2026", "500 ml", "2 kg", "128 GB", "3 unidades"]) ("não confunde medida ou contagem: %s", (text) => expect(containsMoney(text)).toBe(false));
   it.each(["Adicione texto na tela", "Show captions", "Render a price tag", "insira setas e stickers", "Display a floating label", "add UI cards and graphics"]) ("bloqueia overlay afirmativo: %s", (directive) => {
