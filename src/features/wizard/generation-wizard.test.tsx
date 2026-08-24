@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GenerationWizard, fromDraft, toDraft, type WizardFormValues, type WizardServices } from "./generation-wizard";
+import { GenerationWizard, fromDraft, toDraft, type ProductAnalysisDraft, type WizardFormValues, type WizardServices } from "./generation-wizard";
 import { generationInputFixture } from "../../../tests/fixtures/creative-result";
 import { validateCreativeBatch } from "@/features/generation/validation";
 import { creativeBatchFixture } from "../../../tests/fixtures/creative-result";
@@ -27,6 +27,15 @@ describe("GenerationWizard", () => {
     expect(blank.notaMedia).toBeUndefined(); expect(blank.quantidadeAvaliacoes).toBeUndefined();
     const zero = toDraft({ ...fromDraft(base), notaMedia: "0", quantidadeAvaliacoes: "0" });
     expect(zero.notaMedia).toBe(0); expect(zero.quantidadeAvaliacoes).toBe(0);
+  });
+
+  it("adds optional product analysis metadata to the textual draft", () => {
+    const analysis: ProductAnalysisDraft = {
+      productAnalysisKey: "selection-key",
+      productExtractionWarnings: ["Preço não identificado"],
+    };
+
+    expect(toDraft(fromDraft(base), analysis)).toMatchObject(analysis);
   });
 
   it("flushes the latest partial draft when unmounted before the debounce", async () => {
@@ -67,9 +76,14 @@ describe("GenerationWizard", () => {
     const ugc = { ...product, id: "22222222-2222-4222-8222-222222222222", role: "ugc" as const, name: "ugc.jpg" };
     const result = validateCreativeBatch(base, creativeBatchFixture(), "{{copy_completa}}");
     let resolveSave!: () => void; const saveResult = vi.fn(() => new Promise<void>((resolve) => { resolveSave = resolve; }));
-    const generate = vi.fn(async (form: FormData) => { expect([...form.keys()].sort()).toEqual(["ad", "payload", "product"]); return result; });
+    const generate = vi.fn(async (form: FormData) => {
+      expect([...form.keys()].sort()).toEqual(["ad", "payload", "product"]);
+      expect(JSON.parse(String(form.get("payload")))).not.toHaveProperty("productAnalysisKey");
+      expect(JSON.parse(String(form.get("payload")))).not.toHaveProperty("productExtractionWarnings");
+      return result;
+    });
     const navigate = vi.fn(); const user = userEvent.setup();
-    render(<GenerationWizard services={services({ listImages: async () => [product, ugc, { ...product, id: "33333333-3333-4333-8333-333333333333", role: "ad", name: "ad.jpg" }], generate, saveResult, navigate })} />);
+    render(<GenerationWizard services={services({ loadDraft: () => ({ ...base, productAnalysisKey: "selection-key", productExtractionWarnings: ["warning"] }), listImages: async () => [product, ugc, { ...product, id: "33333333-3333-4333-8333-333333333333", role: "ad", name: "ad.jpg" }], generate, saveResult, navigate })} />);
     await screen.findByLabelText("Nome do produto");
     await user.click(screen.getByRole("button", { name: "Continuar" })); await user.click(screen.getByRole("button", { name: "Continuar" }));
     await user.click(screen.getByRole("button", { name: "Gerar criativos" }));

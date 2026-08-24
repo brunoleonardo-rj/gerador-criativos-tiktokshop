@@ -7,5 +7,7 @@ import { generationInputSchema } from "@/features/generation/schema";
 // cleared the default and must not be converted back to one on reload.
 export const draftSchema = generationInputSchema.partial().extend({
   ambientesPermitidos: z.array(z.string().trim().min(1).max(500)).max(20).optional(),
+  productAnalysisKey: z.string().min(1).max(10_000).optional(),
+  productExtractionWarnings: z.array(z.string().trim().min(1).max(1_000)).max(30).optional(),
 });
 export type Draft = z.infer<typeof draftSchema>;

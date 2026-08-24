@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { openDB } from "idb";
 import { describe, expect, it, vi } from "vitest";
+import { DRAFT_STORAGE_KEY, draftStorage } from "./storage";
 
 const legacy = (id: string, name: string) => ({ id, role: "product" as const, blob: new Blob([name], { type: "image/jpeg" }), name, type: "image/jpeg" as const, width: 1, height: 1, size: 1 });
 
@@ -16,5 +17,25 @@ describe("assetStorage v1 migration", () => {
     const images = await assetStorage.listImages();
     expect(images.map((image) => image.name)).toEqual(["legacy-1.jpg", "legacy-f.jpg", "new.jpg"]);
     expect(new Set(images.map((image) => image.order)).size).toBe(3);
+  });
+});
+
+describe("draftStorage v1 compatibility", () => {
+  it("loads a version-one draft created before product analysis metadata existed", () => {
+    const legacyDraft = { nomeProduto: "Produto legado", ambientesPermitidos: [] };
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ version: 1, draft: legacyDraft }));
+
+    expect(draftStorage.load()).toEqual(legacyDraft);
+  });
+
+  it("round-trips the optional product analysis key and extraction warnings", () => {
+    const draft = {
+      nomeProduto: "Produto analisado",
+      productAnalysisKey: "selection-key",
+      productExtractionWarnings: ["Preço não identificado", "Texto parcialmente ilegível"],
+    };
+
+    expect(draftStorage.save(draft)).toBe(true);
+    expect(draftStorage.load()).toEqual(draft);
   });
 });
