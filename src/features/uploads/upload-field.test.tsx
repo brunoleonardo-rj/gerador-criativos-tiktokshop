@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -50,6 +51,17 @@ describe("UploadField", () => {
     fireEvent.change(screen.getByLabelText(/prints do anúncio/i), { target: { files: [new File(["x"], "disfarce.gif", { type: "image/jpeg" })] } });
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/JPEG, PNG ou WEBP/i));
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps a restored image's preview loadable under React StrictMode's mount-cleanup-remount cycle", async () => {
+    const revoked: string[] = [];
+    const originalRevoke = URL.revokeObjectURL.bind(URL);
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation((url) => { revoked.push(url); return originalRevoke(url); });
+    const item = { id: "image-1", role: "ugc" as const, blob: new Blob(["x"], { type: "image/jpeg" }), name: "ugc_01.jpg", type: "image/jpeg" as const, width: 10, height: 10, size: 1 };
+    render(<StrictMode><UploadField role="ugc" min={1} max={5} items={[item]} onChange={vi.fn()} /></StrictMode>);
+    const img = await screen.findByAltText("Prévia de ugc_01.jpg") as HTMLImageElement;
+    await waitFor(() => expect(img.src).toMatch(/^blob:/));
+    expect(revoked).not.toContain(img.src);
   });
 
   it("removes an individual item with an accessible control", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ACCEPTED_IMAGE_TYPES, resizeImage } from "./resize";
 import type { ImageRole, StoredImage } from "@/features/draft/storage";
 
@@ -32,12 +32,15 @@ export function UploadField({ role, min, max, items, label = labels[role], help,
     currentItems.current = items;
     currentDisabled.current = disabled;
   }, [disabled, items]);
-  const previews = useMemo(() => {
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+  // Object URLs are created and revoked in the same effect (not a useMemo) so React's
+  // dev-mode mount→cleanup→remount cycle recreates them instead of leaving stale, revoked URLs.
+  useEffect(() => {
     const next: Record<string, string> = {};
     for (const item of items) next[item.id] = URL.createObjectURL(item.blob);
-    return next;
+    setPreviews(next);
+    return () => Object.values(next).forEach((url) => URL.revokeObjectURL(url));
   }, [items]);
-  useEffect(() => () => Object.values(previews).forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
   function commit(next: StoredImage[]) {
     if (currentDisabled.current) return;
