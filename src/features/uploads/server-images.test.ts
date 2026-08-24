@@ -69,6 +69,52 @@ describe("parseBoundedMultipart", () => {
     });
   });
 
+  it("rejects promptly when an over-limit stream remains open", async () => {
+    let sourceCanceled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array([1, 2, 3, 4, 5]));
+      },
+      cancel() {
+        sourceCanceled = true;
+      },
+    });
+    const request = new Request("http://local/upload", {
+      method: "POST",
+      headers: { "content-type": "multipart/form-data; boundary=test" },
+      body: stream,
+      duplex: "half",
+    } as RequestInit);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let outcome:
+      | { status: "resolved" }
+      | { status: "rejected"; error: unknown }
+      | { status: "timed-out" };
+    let canceledBeforeCleanup = false;
+
+    try {
+      outcome = await Promise.race([
+        parseBoundedMultipart(request, 4).then(
+          () => ({ status: "resolved" }) as const,
+          (error: unknown) => ({ status: "rejected", error }) as const,
+        ),
+        new Promise<{ status: "timed-out" }>((resolve) => {
+          timer = setTimeout(() => resolve({ status: "timed-out" }), 100);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+      canceledBeforeCleanup = sourceCanceled;
+      if (!sourceCanceled) await request.body?.cancel();
+    }
+
+    expect(outcome).toMatchObject({
+      status: "rejected",
+      error: { code: "PAYLOAD_TOO_LARGE" },
+    });
+    expect(canceledBeforeCleanup).toBe(true);
+  });
+
   it("rejects non-multipart content before parsing the body", async () => {
     const request = new Request("http://local/upload", {
       method: "POST",

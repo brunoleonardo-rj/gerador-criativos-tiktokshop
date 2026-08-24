@@ -54,7 +54,7 @@ async function ensureBoundedBody(
       if (done) return;
       size += value.byteLength;
       if (size > maxBodyBytes) {
-        await reader.cancel();
+        void reader.cancel().catch(() => undefined);
         fail("PAYLOAD_TOO_LARGE");
       }
     }
@@ -76,7 +76,12 @@ export async function parseBoundedMultipart(
     await ensureBoundedBody(request.clone(), maxBodyBytes);
     return await request.formData();
   } catch (error) {
-    if (error instanceof UploadRequestFailure) throw error;
+    if (error instanceof UploadRequestFailure) {
+      if (error.code === "PAYLOAD_TOO_LARGE") {
+        void request.body?.cancel().catch(() => undefined);
+      }
+      throw error;
+    }
     fail("INVALID_REQUEST");
   }
 }
