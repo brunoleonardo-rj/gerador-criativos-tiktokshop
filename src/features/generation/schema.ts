@@ -69,7 +69,7 @@ export const generationInputSchema = z.object({
   perfilUgc: longText,
   linkProduto: z.string().url().max(2_000).optional(),
   quantidadeCriativos: z.number().int().min(1).max(8),
-  ambientesPermitidos: z.array(shortText).min(1).max(20),
+  ambientesPermitidos: z.array(shortText).max(20),
   politicaPreco: z.enum(["sem_preco", "teto_folgado", "preco_exato_com_aviso"]),
   duracaoTotal: z.union([z.literal(15), z.literal(20), z.literal(30)]),
   povComEmoji: z.boolean(),

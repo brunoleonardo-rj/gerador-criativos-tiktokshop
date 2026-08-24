@@ -76,6 +76,10 @@ describe("validação editorial", () => {
     const report = validateCreativeBatch(generationInputFixture({ ambientesPermitidos: ["cozinha"] }), creativeBatchFixture({ ambiente: "quarto" }), "{{copy_trecho}}");
     expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "ENVIRONMENT_NOT_ALLOWED", severity: "block", field: "ambiente" }));
   });
+  it("aceita qualquer ambiente quando a lista permitida vem vazia", () => {
+    const report = validateCreativeBatch(generationInputFixture({ ambientesPermitidos: [] }), creativeBatchFixture({ ambiente: "quarto" }), "{{copy_trecho}}");
+    expect(report.creatives[0].issues.map((issue) => issue.code)).not.toContain("ENVIRONMENT_NOT_ALLOWED");
+  });
   it("sinaliza criativo marcado descartável para revisão", () => {
     const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ descartavel: true, motivoDescartavel: "Repetição editorial." }), "{{copy_trecho}}");
     expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "CREATIVE_DISCARDED", severity: "warning", field: "motivoDescartavel", message: expect.stringContaining("Repetição") }));

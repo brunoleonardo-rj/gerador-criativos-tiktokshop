@@ -7,6 +7,9 @@ describe("schema de geração", () => {
     expect(() => generationInputSchema.parse({ ...generationInputFixture(), extra: true })).toThrow();
     expect(() => creativeBatchSchema.parse(creativeBatchFixture({ copy: { ...creativeBatchFixture().creatives[0].copy, trecho1: { ...creativeBatchFixture().creatives[0].copy.trecho1, extra: true } } }))).toThrow();
   });
+  it("aceita ambientesPermitidos vazio para deixar a IA escolher", () => {
+    expect(() => generationInputSchema.parse(generationInputFixture({ ambientesPermitidos: [] }))).not.toThrow();
+  });
   it("aceita trecho3 somente como objeto ou null", () => {
     expect(() => creativeBatchSchema.parse(creativeBatchFixture())).not.toThrow();
     expect(() => creativeBatchSchema.parse(creativeBatchFixture({ copy: { ...creativeBatchFixture().creatives[0].copy, trecho3: "não" } }))).toThrow();

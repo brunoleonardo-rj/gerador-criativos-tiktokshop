@@ -132,7 +132,7 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     const hashtagKey = creative.hashtags.map(normalizeKey).sort().join("|");
     if (seenHashtags.has(hashtagKey)) add(issues, "HASHTAGS_REPEATED", "warning", "hashtags", "O conjunto de hashtags se repete."); else seenHashtags.add(hashtagKey);
     const environmentKey = normalizeKey(creative.ambiente);
-    if (!allowedEnvironments.has(environmentKey)) add(issues, "ENVIRONMENT_NOT_ALLOWED", "block", "ambiente", "O ambiente não pertence à lista permitida.");
+    if (allowedEnvironments.size > 0 && !allowedEnvironments.has(environmentKey)) add(issues, "ENVIRONMENT_NOT_ALLOWED", "block", "ambiente", "O ambiente não pertence à lista permitida.");
     if (seenEnvironment.has(environmentKey)) add(issues, "ENVIRONMENT_REPEATED", "warning", "ambiente", "O ambiente se repete."); else seenEnvironment.add(environmentKey);
     const triple = `${environmentKey}|${normalizeKey(creative.pose)}|${hashtagKey}`;
     if (seenTriples.has(triple)) {

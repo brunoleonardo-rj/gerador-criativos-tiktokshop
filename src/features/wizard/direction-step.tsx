@@ -10,7 +10,7 @@ export function DirectionStep({ register, errors }: Props) {
   return <fieldset>
     <legend>Direção</legend>
     <label>Quantidade de criativos<input type="number" min="1" max="8" defaultValue={5} {...register("quantidadeCriativos")} /></label>{error(errors.quantidadeCriativos)}
-    <label>Ambientes permitidos (um por linha)<textarea {...register("ambientesTexto")} /></label>{error(errors.ambientesTexto)}
+    <label>Ambientes permitidos (um por linha, opcional — deixe em branco para a IA escolher automaticamente)<textarea {...register("ambientesTexto")} /></label>{error(errors.ambientesTexto)}
     <label>Política de preço<select {...register("politicaPreco")}><option value="sem_preco">Sem preço</option><option value="teto_folgado">Teto folgado</option><option value="preco_exato_com_aviso">Preço exato com aviso</option></select></label>
     <label>Duração total<select defaultValue="20" {...register("duracaoTotal")}><option value="15">15 segundos</option><option value="20">20 segundos</option><option value="30">30 segundos</option></select></label>
     <label><input type="checkbox" {...register("povComEmoji")} /> POV com emoji</label>

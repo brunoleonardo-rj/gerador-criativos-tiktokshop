@@ -59,7 +59,7 @@ const formSchema = z.object({
   perfilUgc: z.string().trim().min(1, "Informe o perfil UGC"),
   linkProduto: z.union([z.literal(""), z.string().url("Informe uma URL válida.")]),
   quantidadeCriativos: z.string(),
-  ambientesTexto: text,
+  ambientesTexto: z.string(),
   politicaPreco: z.enum(["sem_preco", "teto_folgado", "preco_exato_com_aviso"]),
   duracaoTotal: z.enum(["15", "20", "30"]),
   povComEmoji: z.boolean(),
