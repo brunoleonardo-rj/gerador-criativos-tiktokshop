@@ -51,10 +51,14 @@ describe("makeGenerateHandler", () => {
       timeout.mockRestore();
     }
   });
-  it("ignores UGC while forwarding only product and ad images", async () => {
+  it("forwards only product images, dropping UGC and already-extracted ad screenshots", async () => {
     const generate = vi.fn().mockResolvedValue(response);
     const handler = makeGenerateHandler({ service: { generate }, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
-    const request = await multipart(generationInputFixture(), [{ role: "ugc", mime: "image/jpeg", bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xdb]) }, { role: "product", mime: "image/jpeg", bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xdb]) }]);
+    const request = await multipart(generationInputFixture(), [
+      { role: "ugc", mime: "image/jpeg", bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xdb]) },
+      { role: "ad", mime: "image/jpeg", bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xdb]) },
+      { role: "product", mime: "image/jpeg", bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xdb]) },
+    ]);
     const result = await handler(request);
     expect(result.status).toBe(200);
     expect(generate).toHaveBeenCalledWith(expect.objectContaining({ images: [expect.objectContaining({ role: "product", mediaType: "image/jpeg" })] }), expect.any(AbortSignal));

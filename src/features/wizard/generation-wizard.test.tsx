@@ -291,12 +291,12 @@ describe("GenerationWizard", () => {
     expect(await screen.findByRole("group", { name: "Direção" })).toBeInTheDocument();
   });
 
-  it("sends reviewed payload plus only product and ad images and waits for the saved result", async () => {
+  it("envia o briefing revisado com só a foto do produto e espera o resultado salvo", async () => {
     const result = validateCreativeBatch(base, creativeBatchFixture(), "{{copy_completa}}");
     let resolveSave!: () => void;
     const saveResult = vi.fn(() => new Promise<void>((resolve) => { resolveSave = resolve; }));
     const generate = vi.fn(async (form: FormData) => {
-      expect([...form.keys()].sort()).toEqual(["ad", "payload", "product", "requestId"]);
+      expect([...form.keys()].sort()).toEqual(["payload", "product", "requestId"]);
       expect(String(form.get("requestId"))).toMatch(/^[0-9a-f-]{36}$/u);
       const payload = JSON.parse(String(form.get("payload"))) as Record<string, unknown>;
       expect(payload.nomeProduto).toBe("Garrafa revisada");

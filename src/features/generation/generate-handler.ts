@@ -64,7 +64,7 @@ export function makeGenerateHandler(deps: Dependencies) {
     try { validatedImages = await collectImageFields(form, imageSpecs, ["payload", "requestId"]); } catch (error) { return uploadFailureResponse(error); }
     const images: GenerationImage[] = [];
     for (const image of validatedImages) {
-      if (image.field === "product" || image.field === "ad") {
+      if (image.field === "product") {
         images.push({ role: image.field, mediaType: image.mediaType, data: image.data });
       }
     }

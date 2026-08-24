@@ -520,11 +520,12 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
     try {
       const data = new FormData();
       const payload = JSON.stringify(input);
-      const attemptKey = JSON.stringify({ payload, images: images.filter((image) => image.role === "product" || image.role === "ad").map((image) => [image.id, image.role, image.name, image.type, image.size]) });
+      const productImages = images.filter((image) => image.role === "product");
+      const attemptKey = JSON.stringify({ payload, images: productImages.map((image) => [image.id, image.role, image.name, image.type, image.size]) });
       if (generationAttempt.current?.key !== attemptKey) generationAttempt.current = { key: attemptKey, id: crypto.randomUUID() };
       data.set("payload", payload);
       data.set("requestId", generationAttempt.current.id);
-      for (const image of await prepareSourceImages(getProductSourceImages(images))) {
+      for (const image of await prepareSourceImages(productImages)) {
         data.append(image.role, new File([image.blob], image.name, { type: image.type }));
       }
       const result = await services.generate(data);
