@@ -9,14 +9,14 @@ const DATABASE_NAME = "creative-generator";
 
 export type ImageRole = "ugc" | "product" | "ad";
 export type StoredImage = { id: string; role: ImageRole; blob: Blob; name: string; type: "image/jpeg" | "image/png" | "image/webp"; width: number; height: number; size: number; order?: number };
-export type StoredResult = GenerationEnvelope & { id: string };
+export type StoredResult = GenerationEnvelope & { id: string; createdAt?: string };
 
 const blobSchema = z.custom<Blob>((value) => value instanceof Blob || Boolean(value && typeof value === "object" && "size" in value && "type" in value), "Blob esperado");
 const imageSchema = z.object({ id: z.string().uuid(), role: z.enum(["ugc", "product", "ad"]), blob: blobSchema, name: z.string().min(1).max(500), type: z.enum(["image/jpeg", "image/png", "image/webp"]), width: z.number().int().positive().max(32_768), height: z.number().int().positive().max(32_768), size: z.number().int().nonnegative(), order: z.number().int().nonnegative().optional() }).strict();
 const storedImageSchema = imageSchema.extend({ blob: z.unknown() });
 const issueSchema = z.object({ code: z.string(), severity: z.enum(["warning", "block"]), field: z.string(), message: z.string() }).strict();
 const envelopeCreativeSchema = creativeSchema.extend({ promptGemini: z.string().nullable(), veoPrompt: z.string().nullable(), actualCounts: z.object({ trecho1: z.number().int().nonnegative(), trecho2: z.number().int().nonnegative(), trecho3: z.number().int().nonnegative().nullable(), pov: z.number().int().nonnegative() }).strict(), issues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]) }).strict();
-const resultSchema = creativeBatchSchema.omit({ creatives: true }).extend({ id: z.string().uuid(), creatives: z.array(envelopeCreativeSchema).min(1).max(8), batchIssues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]), settingsUpdatedAt: z.string().datetime().nullable() }).strict();
+const resultSchema = creativeBatchSchema.omit({ creatives: true }).extend({ id: z.string().uuid(), creatives: z.array(envelopeCreativeSchema).min(1).max(8), batchIssues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]), settingsUpdatedAt: z.string().datetime().nullable(), createdAt: z.string().datetime().optional() }).strict();
 
 interface CreativeDatabase extends DBSchema {
   images: { key: string; value: StoredImage };
@@ -98,6 +98,11 @@ export const assetStorage = {
     if (parsed.success) return parsed.data;
     if (result) await db.delete("results", id);
     return undefined;
+  },
+  async listResults(): Promise<StoredResult[]> {
+    const db = await database(); const results = await db.getAll("results"); const valid: StoredResult[] = [];
+    for (const result of results) { const parsed = resultSchema.safeParse(result); if (parsed.success) valid.push(parsed.data); }
+    return valid.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   },
   async clearResults(): Promise<void> { const db = await database(); await db.clear("results"); },
 };

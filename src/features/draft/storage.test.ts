@@ -96,6 +96,15 @@ describe("assetStorage", () => {
     expect((await assetStorage.listImages()).map((item) => item.id)).toEqual([first.id, second.id]);
   });
 
+  it("lists results newest first, tolerating missing createdAt", async () => {
+    const base = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_completa}}");
+    const undated = { ...base, id: "00000000-0000-4000-8000-000000000000" };
+    const older = { ...base, id: "10000000-0000-4000-8000-000000000000", createdAt: "2026-08-20T12:00:00.000Z" };
+    const newer = { ...base, id: "20000000-0000-4000-8000-000000000000", createdAt: "2026-08-24T12:00:00.000Z" };
+    await assetStorage.putResult(undated); await assetStorage.putResult(older); await assetStorage.putResult(newer);
+    expect((await assetStorage.listResults()).map((result) => result.id)).toEqual([newer.id, older.id, undated.id]);
+  });
+
   it("rejects malformed results and hides corrupt stored records", async () => {
     await expect(assetStorage.putResult({ id: "not-a-uuid" } as never)).rejects.toThrow();
     expect(await assetStorage.getResult("not-a-uuid")).toBeUndefined();

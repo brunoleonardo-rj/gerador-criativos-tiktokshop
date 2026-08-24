@@ -244,7 +244,7 @@ const defaultServices: WizardServices = {
   deleteImage: assetStorage.deleteImage,
   extractProduct: fetchProductExtraction,
   generate: fetchGeneration,
-  saveResult: async (id, result) => assetStorage.putResult({ ...result, id }),
+  saveResult: async (id, result) => assetStorage.putResult({ ...result, id, createdAt: new Date().toISOString() }),
   navigate: (path) => { window.location.assign(path); },
 };
 
