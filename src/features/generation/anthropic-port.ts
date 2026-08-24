@@ -12,22 +12,24 @@ export interface AnthropicPort { generate(apiKey: string, request: AnthropicRequ
 type Client = Pick<Anthropic, "messages">;
 
 function warnInvalidOutput(response: { _request_id?: string | null; stop_reason?: string | null; usage?: { output_tokens?: number | null } }, reason: string, issues: Array<{ path: PropertyKey[]; code: string }> = []): void {
-  console.warn("[generation] invalid structured output", {
+  const diagnostic = {
     requestId: response._request_id ?? null,
     stopReason: response.stop_reason ?? null,
     outputTokens: response.usage?.output_tokens ?? 0,
     reason,
     issues: issues.slice(0, 5).map((issue) => ({ path: issue.path.map(String).join("."), code: issue.code })),
-  });
+  };
+  console.warn(`[generation] invalid structured output ${JSON.stringify(diagnostic)}`);
 }
 function warnUpstreamUnavailable(error: unknown): void {
   const value = typeof error === "object" && error !== null ? error as Record<string, unknown> : {};
-  console.warn("[generation] upstream unavailable", {
+  const diagnostic = {
     status: typeof value.status === "number" ? value.status : null,
     requestId: typeof value.request_id === "string" ? value.request_id : typeof value.requestId === "string" ? value.requestId : null,
     code: typeof value.code === "string" ? value.code : null,
     name: error instanceof Error ? error.name : null,
-  });
+  };
+  console.warn(`[generation] upstream unavailable ${JSON.stringify(diagnostic)}`);
 }
 
 export class AnthropicSdkAdapter implements AnthropicPort {

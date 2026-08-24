@@ -28,7 +28,7 @@ describe("AnthropicSdkAdapter", () => {
 
     try {
       await expect(adapter.generate("secret", request, new AbortController().signal)).rejects.toMatchObject({ code: "INVALID_MODEL_OUTPUT" });
-      expect(warn).toHaveBeenCalledWith("[generation] invalid structured output", expect.objectContaining({ requestId: "req_safe", reason: "schema_validation_failed", outputTokens: 99 }));
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('[generation] invalid structured output {"requestId":"req_safe","stopReason":"end_turn","outputTokens":99,"reason":"schema_validation_failed"'));
       expect(JSON.stringify(warn.mock.calls)).not.toContain("não registrar este conteúdo");
     } finally {
       warn.mockRestore();
@@ -44,7 +44,7 @@ describe("AnthropicSdkAdapter", () => {
 
     try {
       await expect(adapter.generate("secret", request, new AbortController().signal)).rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
-      expect(warn).toHaveBeenCalledWith("[generation] upstream unavailable", { status: 529, requestId: "req_upstream", code: "overloaded_error", name: null });
+      expect(warn).toHaveBeenCalledWith('[generation] upstream unavailable {"status":529,"requestId":"req_upstream","code":"overloaded_error","name":null}');
       expect(JSON.stringify(warn.mock.calls)).not.toContain("conteúdo privado");
     } finally {
       warn.mockRestore();
