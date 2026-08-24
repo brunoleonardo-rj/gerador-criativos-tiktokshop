@@ -1,4 +1,5 @@
 import "fake-indexeddb/auto";
+import { openDB } from "idb";
 import { beforeEach, describe, expect, it } from "vitest";
 import { assetStorage, draftStorage, type StoredImage } from "./storage";
 import { validateCreativeBatch } from "@/features/generation/validation";
@@ -81,12 +82,21 @@ describe("assetStorage", () => {
   });
 
   it("keeps generation results isolated from images", async () => {
-    const result = { ...validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_completa}}"), id: "0ed35cb8-4f88-4ded-9f51-08404fc0f34f" };
+    const result = { ...validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_trecho}}"), id: "0ed35cb8-4f88-4ded-9f51-08404fc0f34f" };
     await assetStorage.putImage(image);
     await assetStorage.putResult(result);
     expect(await assetStorage.getResult(result.id)).toEqual(result);
     await assetStorage.clearImages();
     expect(await assetStorage.getResult(result.id)).toEqual(result);
+  });
+
+  it("migrates a result stored under the old single veoPrompt shape instead of discarding it", async () => {
+    const result = { ...validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_trecho}}"), id: "20000000-0000-4000-8000-000000000000" };
+    const legacy = { ...result, creatives: result.creatives.map(({ veoPrompts, ...creative }) => ({ ...creative, veoPrompt: veoPrompts.trecho1 })) };
+    const expected = { ...result, creatives: result.creatives.map((creative) => ({ ...creative, veoPrompts: { trecho1: creative.veoPrompts.trecho1, trecho2: null, trecho3: null } })) };
+    const db = await openDB("creative-generator", 2);
+    await db.put("results", legacy);
+    expect(await assetStorage.getResult(result.id)).toEqual(expected);
   });
 
   it("preserves selection order instead of sorting opaque UUIDs", async () => {
@@ -97,7 +107,7 @@ describe("assetStorage", () => {
   });
 
   it("lists results newest first, tolerating missing createdAt", async () => {
-    const base = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_completa}}");
+    const base = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_trecho}}");
     const undated = { ...base, id: "00000000-0000-4000-8000-000000000000" };
     const older = { ...base, id: "10000000-0000-4000-8000-000000000000", createdAt: "2026-08-20T12:00:00.000Z" };
     const newer = { ...base, id: "20000000-0000-4000-8000-000000000000", createdAt: "2026-08-24T12:00:00.000Z" };

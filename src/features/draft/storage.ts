@@ -77,6 +77,16 @@ function database() {
   return databasePromise;
 }
 
+function migrateLegacyResult(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || !("creatives" in raw) || !Array.isArray((raw as { creatives: unknown }).creatives)) return raw;
+  const value = raw as Record<string, unknown> & { creatives: unknown[] };
+  const creatives = value.creatives.map((creative) => {
+    if (!creative || typeof creative !== "object" || "veoPrompts" in creative || !("veoPrompt" in creative)) return creative;
+    const { veoPrompt, ...rest } = creative as Record<string, unknown>;
+    return { ...rest, veoPrompts: { trecho1: typeof veoPrompt === "string" ? veoPrompt : null, trecho2: null, trecho3: null } };
+  });
+  return { ...value, creatives };
+}
 export const assetStorage = {
   async putImage(image: StoredImage): Promise<void> {
     const db = await database(); const transaction = db.transaction("images", "readwrite");
@@ -95,14 +105,14 @@ export const assetStorage = {
   async putResult(result: StoredResult): Promise<void> { const db = await database(); await db.put("results", resultSchema.parse(result)); },
   async getResult(id: string): Promise<StoredResult | undefined> {
     if (!z.string().uuid().safeParse(id).success) return undefined;
-    const db = await database(); const result = await db.get("results", id); const parsed = resultSchema.safeParse(result);
+    const db = await database(); const result = await db.get("results", id); const parsed = resultSchema.safeParse(migrateLegacyResult(result));
     if (parsed.success) return parsed.data;
     if (result) await db.delete("results", id);
     return undefined;
   },
   async listResults(): Promise<StoredResult[]> {
     const db = await database(); const results = await db.getAll("results"); const valid: StoredResult[] = [];
-    for (const result of results) { const parsed = resultSchema.safeParse(result); if (parsed.success) valid.push(parsed.data); }
+    for (const result of results) { const parsed = resultSchema.safeParse(migrateLegacyResult(result)); if (parsed.success) valid.push(parsed.data); }
     return valid.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   },
   async clearResults(): Promise<void> { const db = await database(); await db.clear("results"); },
