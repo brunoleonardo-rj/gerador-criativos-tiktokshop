@@ -13,8 +13,7 @@ describe("VEO template", () => {
     const output = renderVeoTemplate("Produto {{produto}}\nFala: {{copy_completa}}", {
       produto: "Body splash",
       copy_completa: "Trecho um Trecho dois",
-      copy_trecho1: "Trecho um",
-      copy_trecho2: "Trecho dois",
+      copy_trechos: 'Trecho 1: "Trecho um"\nTrecho 2: "Trecho dois"',
       pov: "✨ Cheiro de presença",
       ambiente: "Quarto",
       figurino: "Conjunto casual",
@@ -38,8 +37,7 @@ describe("VEO template", () => {
     const values = {
       produto: "Body splash",
       copy_completa: "Trecho um Trecho dois",
-      copy_trecho1: "Trecho um",
-      copy_trecho2: "Trecho dois",
+      copy_trechos: 'Trecho 1: "Trecho um"\nTrecho 2: "Trecho dois"',
       pov: "✨ Cheiro de presença",
       ambiente: "Quarto",
       figurino: "Conjunto casual",
@@ -57,8 +55,7 @@ describe("VEO template", () => {
     const output = renderVeoTemplate("BEATS:\n{{speech_beats}}", {
       produto: "Body splash",
       copy_completa: "Ele fixa bem na pele",
-      copy_trecho1: "Ele fixa bem",
-      copy_trecho2: "na pele",
+      copy_trechos: 'Trecho 1: "Ele fixa bem"\nTrecho 2: "na pele"',
       pov: "Cheiro marcante ✨",
       ambiente: "Quarto",
       figurino: "Conjunto casual",

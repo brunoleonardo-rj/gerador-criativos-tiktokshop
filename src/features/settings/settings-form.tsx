@@ -28,8 +28,7 @@ const tabs: Array<{ id: Tab; label: string }> = [
 const previewValues: VeoVariables = {
   produto: "Garrafa térmica Aurora",
   copy_completa: "Eu levo água gelada comigo o dia todo, sem complicar a rotina.",
-  copy_trecho1: "Eu levo água gelada comigo o dia todo,",
-  copy_trecho2: "sem complicar a rotina.",
+  copy_trechos: 'Trecho 1: "Eu levo água gelada comigo o dia todo,"\nTrecho 2: "sem complicar a rotina."',
   pov: "POV: hidratação sem esforço 💧",
   ambiente: "cozinha iluminada",
   figurino: "camiseta branca casual",
@@ -191,7 +190,7 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
         <h2>Prompt VEO 3</h2>
         <label htmlFor="veo-template">Template VEO 3</label>
         <textarea id="veo-template" name="veoTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={8} value={veoTemplate} onChange={(event) => setVeoTemplate(event.target.value)} aria-invalid={!templateValidation.valid} aria-describedby={`veo-template-help${templateValidation.valid ? "" : " veo-template-error"}`} required />
-        <p id="veo-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{copy_completa}}"}, {"{{copy_trecho1}}"}, {"{{copy_trecho2}}"}, {"{{pov}}"}, {"{{ambiente}}"}, {"{{figurino}}"}, {"{{pose}}"}, {"{{prompt_gemini}}"} e {"{{speech_beats}}"}.</p>
+        <p id="veo-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{copy_completa}}"}, {"{{copy_trechos}}"}, {"{{pov}}"}, {"{{ambiente}}"}, {"{{figurino}}"}, {"{{pose}}"}, {"{{prompt_gemini}}"} e {"{{speech_beats}}"}.</p>
         {!templateValidation.valid && <p id="veo-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {templateValidation.unknown.join(", ")}.</p>}
         <h3>Prévia com dados fictícios</h3>
         <output className="whitespace-pre-wrap rounded-xl bg-[#fff6f3] p-4 text-sm leading-6 text-[#201a22]">{preview}</output>

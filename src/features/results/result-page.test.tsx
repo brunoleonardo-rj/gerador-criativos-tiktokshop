@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ResultPage } from "./result-page";
 import { generationInputFixture, creativeBatchFixture } from "../../../tests/fixtures/creative-result";
@@ -8,12 +8,22 @@ const id = "11111111-1111-4111-8111-111111111111";
 const result = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{copy_completa}}");
 describe("ResultPage", () => {
   afterEach(() => cleanup());
-  it("loads the current browser result once without fetch", async () => {
-    const getResult = vi.fn().mockResolvedValue({ ...result, id }); const fetchSpy = vi.spyOn(globalThis, "fetch");
-    render(<ResultPage id={id} storage={{ getResult }} />);
+  it("loads the current browser result once from storage", async () => {
+    const getResult = vi.fn().mockResolvedValue({ ...result, id }); const fetchCurrentTemplates = vi.fn().mockResolvedValue(null);
+    render(<ResultPage id={id} storage={{ getResult }} fetchCurrentTemplates={fetchCurrentTemplates} />);
     expect(screen.getByText("Carregando resultado…")).toBeInTheDocument();
     expect(await screen.findByText("Garrafa térmica")).toBeInTheDocument();
-    expect(getResult).toHaveBeenCalledOnce(); expect(fetchSpy).not.toHaveBeenCalled();
+    expect(getResult).toHaveBeenCalledOnce();
+  });
+  it("re-renders prompts and persists them when the saved templates changed since generation", async () => {
+    const getResult = vi.fn().mockResolvedValue({ ...result, id, settingsUpdatedAt: null });
+    const putResult = vi.fn().mockResolvedValue(undefined);
+    const fetchCurrentTemplates = vi.fn().mockResolvedValue({ veoTemplate: "ATUALIZADO {{copy_completa}}", geminiTemplate: "GEMINI {{produto}}", updatedAt: "2026-08-24T00:00:00.000Z" });
+    render(<ResultPage id={id} storage={{ getResult, putResult }} fetchCurrentTemplates={fetchCurrentTemplates} />);
+    await screen.findByText("Garrafa térmica");
+    await waitFor(() => expect(putResult).toHaveBeenCalledOnce());
+    expect(putResult).toHaveBeenCalledWith(expect.objectContaining({ id, settingsUpdatedAt: "2026-08-24T00:00:00.000Z" }));
+    expect(await screen.findByText(/ATUALIZADO/)).toBeInTheDocument();
   });
   it("renders safe missing state for rejected or absent browser storage", async () => {
     const { rerender } = render(<ResultPage id={id} storage={{ getResult: vi.fn().mockRejectedValue(new Error("db")) }} />);
