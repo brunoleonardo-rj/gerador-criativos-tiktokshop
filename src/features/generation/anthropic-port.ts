@@ -20,6 +20,15 @@ function warnInvalidOutput(response: { _request_id?: string | null; stop_reason?
     issues: issues.slice(0, 5).map((issue) => ({ path: issue.path.map(String).join("."), code: issue.code })),
   });
 }
+function warnUpstreamUnavailable(error: unknown): void {
+  const value = typeof error === "object" && error !== null ? error as Record<string, unknown> : {};
+  console.warn("[generation] upstream unavailable", {
+    status: typeof value.status === "number" ? value.status : null,
+    requestId: typeof value.request_id === "string" ? value.request_id : typeof value.requestId === "string" ? value.requestId : null,
+    code: typeof value.code === "string" ? value.code : null,
+    name: error instanceof Error ? error.name : null,
+  });
+}
 
 export class AnthropicSdkAdapter implements AnthropicPort {
   constructor(private readonly makeClient: (apiKey: string) => Client = (apiKey) => new Anthropic({ apiKey, maxRetries: 0 })) {}
@@ -49,7 +58,11 @@ export class AnthropicSdkAdapter implements AnthropicPort {
       }
       const batch: CreativeBatch = parsed.data;
       return { batch, usage: { inputTokens: response.usage.input_tokens ?? 0, outputTokens: response.usage.output_tokens ?? 0, cacheReadTokens: response.usage.cache_read_input_tokens ?? 0, cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0 } };
-    } catch (error) { throw failureForAnthropic(error, signal); }
+    } catch (error) {
+      const failure = failureForAnthropic(error, signal);
+      if (failure.code === "UPSTREAM_UNAVAILABLE") warnUpstreamUnavailable(error);
+      throw failure;
+    }
   }
 }
 

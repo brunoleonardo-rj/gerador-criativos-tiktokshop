@@ -296,7 +296,8 @@ describe("GenerationWizard", () => {
     let resolveSave!: () => void;
     const saveResult = vi.fn(() => new Promise<void>((resolve) => { resolveSave = resolve; }));
     const generate = vi.fn(async (form: FormData) => {
-      expect([...form.keys()].sort()).toEqual(["ad", "payload", "product"]);
+      expect([...form.keys()].sort()).toEqual(["ad", "payload", "product", "requestId"]);
+      expect(String(form.get("requestId"))).toMatch(/^[0-9a-f-]{36}$/u);
       const payload = JSON.parse(String(form.get("payload"))) as Record<string, unknown>;
       expect(payload.nomeProduto).toBe("Garrafa revisada");
       expect(payload.perfilUgc).toBe("sem_pessoa");
@@ -341,6 +342,28 @@ describe("GenerationWizard", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Gerar criativos" })).toBeEnabled();
     expect(generate).toHaveBeenCalledOnce();
+  });
+
+  it("reutiliza o identificador ao reenviar o mesmo briefing após indisponibilidade", async () => {
+    const requestIds: string[] = [];
+    const generate = vi.fn(async (form: FormData) => {
+      requestIds.push(String(form.get("requestId")));
+      throw new Error("UPSTREAM_UNAVAILABLE");
+    });
+    const user = userEvent.setup();
+    render(<GenerationWizard services={services({ loadDraft: () => ({ ...base, productAnalysisKey: productSelectionKey }), listImages: async () => [product], generate })} />);
+
+    await screen.findByLabelText("Nome do produto");
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+    await user.click(screen.getByRole("button", { name: "Gerar criativos" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("protegida contra nova cobrança por 5 minutos");
+    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Gerar criativos" }));
+
+    await waitFor(() => expect(generate).toHaveBeenCalledTimes(2));
+    expect(requestIds[0]).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(requestIds[1]).toBe(requestIds[0]);
   });
 });
 

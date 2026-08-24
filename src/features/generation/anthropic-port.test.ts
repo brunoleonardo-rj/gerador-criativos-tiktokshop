@@ -38,6 +38,18 @@ describe("AnthropicSdkAdapter", () => {
     const adapter = new AnthropicSdkAdapter(() => ({ messages: { create: async () => { throw { status, body: "private" }; } } } as never));
     await expect(adapter.generate("secret", request, new AbortController().signal)).rejects.toMatchObject({ code });
   });
+  it("registra metadados seguros de indisponibilidade sem conteúdo privado", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const adapter = new AnthropicSdkAdapter(() => ({ messages: { create: async () => { throw { status: 529, request_id: "req_upstream", code: "overloaded_error", body: "conteúdo privado" }; } } } as never));
+
+    try {
+      await expect(adapter.generate("secret", request, new AbortController().signal)).rejects.toMatchObject({ code: "UPSTREAM_UNAVAILABLE" });
+      expect(warn).toHaveBeenCalledWith("[generation] upstream unavailable", { status: 529, requestId: "req_upstream", code: "overloaded_error", name: null });
+      expect(JSON.stringify(warn.mock.calls)).not.toContain("conteúdo privado");
+    } finally {
+      warn.mockRestore();
+    }
+  });
   it("maps an aborted request to timeout", async () => {
     const controller = new AbortController(); controller.abort();
     const adapter = new AnthropicSdkAdapter(() => ({ messages: { create: async () => { throw new DOMException("aborted", "AbortError"); } } } as never));

@@ -276,7 +276,7 @@ const submissionErrorMessages: Record<string, string> = {
   REFUSAL: "A geração foi recusada. Ajuste o briefing e tente novamente.",
   TIMEOUT: "A geração demorou mais que o esperado.",
   INVALID_MODEL_OUTPUT: "A resposta não pôde ser recuperada. Para evitar nova cobrança, não gere novamente com os mesmos dados. Reduza a quantidade de criativos antes de tentar uma vez.",
-  UPSTREAM_UNAVAILABLE: "O serviço está indisponível no momento.",
+  UPSTREAM_UNAVAILABLE: "A Anthropic não concluiu esta solicitação. Esta tentativa está protegida contra nova cobrança por 5 minutos. Aguarde antes de alterar os dados e gerar novamente.",
 };
 const emptyWarnings: string[] = [];
 
@@ -320,6 +320,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
   const [productAnalysis, setProductAnalysis] = useState<ProductAnalysisDraft>({});
   const extracting = useRef(false);
   const submitting = useRef(false);
+  const generationAttempt = useRef<{ key: string; id: string } | null>(null);
   const form = useForm<WizardFormValues>({ defaultValues, resolver: zodResolver(formSchema) });
   const values = useWatch({ control: form.control });
   const profile = values.perfilUgc ?? "";
@@ -518,7 +519,11 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
     setInvalidGenerationQuantity(null);
     try {
       const data = new FormData();
-      data.set("payload", JSON.stringify(input));
+      const payload = JSON.stringify(input);
+      const attemptKey = JSON.stringify({ payload, images: images.filter((image) => image.role === "product" || image.role === "ad").map((image) => [image.id, image.role, image.name, image.type, image.size]) });
+      if (generationAttempt.current?.key !== attemptKey) generationAttempt.current = { key: attemptKey, id: crypto.randomUUID() };
+      data.set("payload", payload);
+      data.set("requestId", generationAttempt.current.id);
       for (const image of await prepareSourceImages(getProductSourceImages(images))) {
         data.append(image.role, new File([image.blob], image.name, { type: image.type }));
       }
@@ -596,7 +601,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
           <p>{visibleSubmissionError}</p>
           {visibleSubmissionError === submissionErrorMessages.API_NOT_CONFIGURED
             ? <a className={styles.inlineLink} href="/configuracoes">Abrir Configurações</a>
-            : visibleSubmissionError !== submissionErrorMessages.INVALID_MODEL_OUTPUT
+            : visibleSubmissionError !== submissionErrorMessages.INVALID_MODEL_OUTPUT && visibleSubmissionError !== submissionErrorMessages.UPSTREAM_UNAVAILABLE
               ? <button className={styles.inlineButton} type="button" onClick={() => void submit()}>Tentar novamente</button>
               : null}
         </div>}

@@ -16,6 +16,27 @@ const response = { creatives: [], batchIssues: [], status: "valid", produtoNorma
 const threeMiBJpeg = () => { const bytes = new Uint8Array(3 * 1024 * 1024); bytes.set([0xff, 0xd8, 0xff, 0xdb]); return bytes; };
 
 describe("makeGenerateHandler", () => {
+  it("não chama a Anthropic novamente para a mesma tentativa", async () => {
+    const generate = vi.fn().mockResolvedValue(response);
+    const handler = makeGenerateHandler({ service: { generate }, requireSession: async () => ({}), enforceSameOrigin: () => undefined });
+    const requestId = "44444444-4444-4444-8444-444444444444";
+
+    const first = await handler(await multipart(generationInputFixture(), [], [{ name: "requestId", value: requestId }]));
+    const second = await handler(await multipart(generationInputFixture(), [], [{ name: "requestId", value: requestId }]));
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(generate).toHaveBeenCalledOnce();
+  });
+  it("rejeita reutilização do identificador com outro briefing", async () => {
+    const generate = vi.fn().mockResolvedValue(response);
+    const handler = makeGenerateHandler({ service: { generate }, requireSession: async () => ({}), enforceSameOrigin: () => undefined });
+    const requestId = "55555555-5555-4555-8555-555555555555";
+
+    expect((await handler(await multipart(generationInputFixture(), [], [{ name: "requestId", value: requestId }]))).status).toBe(200);
+    expect((await handler(await multipart(generationInputFixture({ nomeProduto: "Outro" }), [], [{ name: "requestId", value: requestId }]))).status).toBe(422);
+    expect(generate).toHaveBeenCalledOnce();
+  });
   it("permite até cinco minutos para a geração estruturada", async () => {
     const signal = new AbortController().signal;
     const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(signal);
