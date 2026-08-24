@@ -2,8 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { generationInputFixture } from "../../../tests/fixtures/creative-result";
 import { MAX_BODY_BYTES, makeGenerateHandler } from "./generate-handler";
 
-async function multipart(input: unknown, files: Array<{ role: string; mime: string; bytes: Uint8Array<ArrayBuffer> }>) {
+async function multipart(
+  input: unknown,
+  files: Array<{ role: string; mime: string; bytes: Uint8Array<ArrayBuffer> }>,
+  fields: Array<{ name: string; value: string }> = [],
+) {
   const boundary = "test-boundary"; const parts: BlobPart[] = [`--${boundary}\r\nContent-Disposition: form-data; name="payload"\r\n\r\n${JSON.stringify(input)}\r\n`];
+  for (const field of fields) parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="${field.name}"\r\n\r\n${field.value}\r\n`);
   for (const file of files) parts.push(`--${boundary}\r\nContent-Disposition: form-data; name="${file.role}"; filename="x"\r\nContent-Type: ${file.mime}\r\n\r\n`, file.bytes, "\r\n");
   parts.push(`--${boundary}--\r\n`); return new Request("http://local/api/generate", { method: "POST", headers: { "content-type": `multipart/form-data; boundary=${boundary}` }, body: await new Blob(parts).arrayBuffer() });
 }
@@ -19,9 +24,13 @@ describe("makeGenerateHandler", () => {
     expect(result.status).toBe(200);
     expect(generate).toHaveBeenCalledWith(expect.objectContaining({ images: [expect.objectContaining({ role: "product", mediaType: "image/jpeg" })] }), expect.any(AbortSignal));
   });
-  it("rejects a mismatched image signature and forbidden field", async () => {
+  it("rejects a mismatched image signature", async () => {
     const handler = makeGenerateHandler({ service: { generate: vi.fn() }, requireSession: async () => ({}), enforceSameOrigin: () => undefined });
     expect((await handler(await multipart(generationInputFixture(), [{ role: "product", mime: "image/jpeg", bytes: new TextEncoder().encode("not image") }]))).status).toBe(422);
+  });
+  it("rejects any non-file field other than payload", async () => {
+    const handler = makeGenerateHandler({ service: { generate: vi.fn() }, requireSession: async () => ({}), enforceSameOrigin: () => undefined });
+    expect((await handler(await multipart(generationInputFixture(), [], [{ name: "forbidden", value: "x" }]))).status).toBe(422);
   });
   it("accepts the contracted 18-file multipart body without Content-Length", async () => {
     const generate = vi.fn().mockResolvedValue(response);
