@@ -4,14 +4,24 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { ACCEPTED_IMAGE_TYPES, resizeImage } from "./resize";
 import type { ImageRole, StoredImage } from "@/features/draft/storage";
 
-type UploadFieldProps = { role: ImageRole; min: number; max: number; items: StoredImage[]; onChange(items: StoredImage[]): void };
+type UploadFieldProps = {
+  role: ImageRole;
+  min: number;
+  max: number;
+  items: StoredImage[];
+  label?: string;
+  help?: string;
+  disabled?: boolean;
+  onChange(items: StoredImage[]): void;
+};
 const labels: Record<ImageRole, string> = { ugc: "Fotos da pessoa UGC", product: "Fotos do produto", ad: "Prints do anúncio" };
 const allowed = new Set<string>(ACCEPTED_IMAGE_TYPES);
 const extensionForType: Record<string, RegExp> = { "image/jpeg": /\.jpe?g$/iu, "image/png": /\.png$/iu, "image/webp": /\.webp$/iu };
 const acceptedFile = (file: File): boolean => allowed.has(file.type) && extensionForType[file.type]?.test(file.name) === true;
 
-export function UploadField({ role, min, max, items, onChange }: UploadFieldProps) {
+export function UploadField({ role, min, max, items, label = labels[role], help, disabled = false, onChange }: UploadFieldProps) {
   const id = useId();
+  const helpText = help ?? `Selecione entre ${min} e ${max} imagens. JPEG, PNG ou WEBP.`;
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(0);
   const currentItems = useRef(items);
@@ -55,18 +65,20 @@ export function UploadField({ role, min, max, items, onChange }: UploadFieldProp
     });
   }
 
-  return <fieldset aria-describedby={`${id}-help`}>
-    <legend>{labels[role]}</legend>
-    <p id={`${id}-help`}>Selecione entre {min} e {max} imagens. JPEG, PNG ou WEBP.</p>
-    <label htmlFor={id}>{labels[role]}</label>
-    <input id={id} aria-label={labels[role]} type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} multiple disabled={items.length >= max} onChange={(event) => { void choose(event.target.files); event.currentTarget.value = ""; }} />
+  return <fieldset aria-describedby={`${id}-help`} aria-disabled={disabled}>
+    <legend>{label}</legend>
+    <p id={`${id}-help`}>{helpText}</p>
+    <label htmlFor={id}>{label}</label>
+    <input id={id} aria-label={label} aria-describedby={`${id}-help`} type="file" accept={ACCEPTED_IMAGE_TYPES.join(",")} multiple disabled={disabled || items.length >= max} onChange={(event) => { void choose(event.target.files); event.currentTarget.value = ""; }} />
     {processing > 0 && <p role="status" aria-live="polite">Processando {processing} imagem(ns)…</p>}
     {error && <p role="alert">{error}</p>}
     <ul aria-label="Imagens selecionadas">
       {items.map((item) => <li key={item.id}>
+        {/* Local object URLs are already resized and revoked by this component. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         {previews[item.id] && <img src={previews[item.id]} alt={`Prévia de ${item.name}`} />}
         <span>{item.name} — {item.width}×{item.height}</span>
-        <button type="button" onClick={() => commit(currentItems.current.filter((candidate) => candidate.id !== item.id))} aria-label={`Remover ${item.name}`}>Remover</button>
+        <button type="button" disabled={disabled} onClick={() => commit(currentItems.current.filter((candidate) => candidate.id !== item.id))} aria-label={`Remover ${item.name}`}>Remover</button>
       </li>)}
     </ul>
   </fieldset>;

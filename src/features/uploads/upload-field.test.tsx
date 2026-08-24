@@ -12,6 +12,19 @@ vi.mock("./resize", async (importOriginal) => ({
 afterEach(cleanup);
 
 describe("UploadField", () => {
+  it("uses a custom label and help without changing the UGC defaults", () => {
+    const onChange = vi.fn();
+    const custom = render(<UploadField role="product" min={1} max={8} items={[]} onChange={onChange} label="Fotos e prints do produto" help="Inclua embalagem e detalhes do anúncio." />);
+
+    expect(screen.getByRole("group", { name: "Fotos e prints do produto" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Fotos e prints do produto")).toHaveAccessibleDescription("Inclua embalagem e detalhes do anúncio.");
+
+    custom.unmount();
+    render(<UploadField role="ugc" min={1} max={5} items={[]} onChange={onChange} />);
+    expect(screen.getByRole("group", { name: "Fotos da pessoa UGC" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Fotos da pessoa UGC")).toHaveAccessibleDescription("Selecione entre 1 e 5 imagens. JPEG, PNG ou WEBP.");
+  });
+
   it("adds valid selected images up to the received limit", async () => {
     const onChange = vi.fn();
     render(<UploadField role="product" min={1} max={1} items={[]} onChange={onChange} />);
