@@ -19,6 +19,7 @@ describe("VEO template", () => {
       pose: "Em pé",
       prompt_gemini: "PROMPT",
       speech_beats: '- On "leve": quick push-in + brush the fabric → fabric remains visible',
+      continuidade: "",
     });
 
     expect(output).toContain("Fala: Trecho um");
@@ -42,6 +43,7 @@ describe("VEO template", () => {
       pose: "Em pé",
       prompt_gemini: "PROMPT",
       speech_beats: "- Sem beats",
+      continuidade: "",
     };
 
     expect(() => renderVeoTemplate("{{produto", values)).toThrow();
@@ -59,6 +61,7 @@ describe("VEO template", () => {
       pose: "Em pé",
       prompt_gemini: "PROMPT",
       speech_beats: '- On "fixa": fast push-in + point beside the bottle → label stays visible',
+      continuidade: "",
     });
 
     expect(output).toContain('On "fixa"');

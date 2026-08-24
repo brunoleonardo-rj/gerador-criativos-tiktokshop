@@ -41,6 +41,7 @@ const previewValues: VeoVariables = {
   pose: "segurando a garrafa perto da câmera",
   prompt_gemini: "Vídeo UGC vertical, luz natural e demonstração do produto.",
   speech_beats: '- On "gelada": quick push-in + gesture beside the bottle → bottle remains visible',
+  continuidade: "",
 };
 
 const geminiPreviewValues: GeminiVariables = {
@@ -201,7 +202,7 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
         <h2>Prompt VEO 3</h2>
         <label htmlFor="veo-template">Template VEO 3</label>
         <textarea id="veo-template" name="veoTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={8} value={veoTemplate} onChange={(event) => setVeoTemplate(event.target.value)} aria-invalid={!templateValidation.valid} aria-describedby={`veo-template-help${templateValidation.valid ? "" : " veo-template-error"}`} required />
-        <p id="veo-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{copy_trecho}}"}, {"{{pov}}"}, {"{{ambiente}}"}, {"{{figurino}}"}, {"{{pose}}"}, {"{{prompt_gemini}}"} e {"{{speech_beats}}"}. Um prompt VEO completo é renderizado para cada trecho de fala do criativo.</p>
+        <p id="veo-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{copy_trecho}}"}, {"{{pov}}"}, {"{{ambiente}}"}, {"{{figurino}}"}, {"{{pose}}"}, {"{{prompt_gemini}}"}, {"{{speech_beats}}"} e {"{{continuidade}}"}. Um prompt VEO completo é renderizado para cada trecho de fala do criativo; a partir do trecho 2, {"{{continuidade}}"} instrui a usar o frame final do segmento anterior e as fotos do produto para manter continuidade e fidelidade.</p>
         {!templateValidation.valid && <p id="veo-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {templateValidation.unknown.join(", ")}.</p>}
         <h3>Prévia com dados fictícios</h3>
         <output className="whitespace-pre-wrap rounded-xl bg-[#fff6f3] p-4 text-sm leading-6 text-[#201a22]">{preview}</output>

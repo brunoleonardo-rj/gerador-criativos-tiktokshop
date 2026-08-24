@@ -5,7 +5,7 @@ import { validateVeoTemplate } from "./veo-template";
 import { DEFAULT_GEMINI_TEMPLATE, validateGeminiTemplate } from "./gemini-template";
 
 export const DEFAULT_VEO_TEMPLATE = `Create a highly realistic 9:16 vertical video using the provided frame as the visual reference.
-Preserve the identity, product, environment, lighting direction, and overall composition shown in the image, while allowing natural motion and continuity to bring the scene to life.
+Preserve the identity, product, environment, lighting direction, and overall composition shown in the image, while allowing natural motion and continuity to bring the scene to life. {{continuidade}}
 
 PRODUCT: {{produto}}
 ENVIRONMENT: {{ambiente}}
@@ -56,7 +56,7 @@ PRODUCT INTERACTION:
 GENERAL GUIDELINES:
 - Let realism guide every decision.
 - Keep the video clean, modern, human, and believable.
-- No on-screen text, captions, overlays, or graphic elements.
+- Absolutely no on-screen text, captions, or subtitles of any kind, and no inserted image, logo, sticker, graphic, or animation composited over the footage — the video must be pure camera footage, nothing overlaid on top.
 - The result should feel like a real person recording a real moment — not an ad.`;
 
 export type PublicSettings = {

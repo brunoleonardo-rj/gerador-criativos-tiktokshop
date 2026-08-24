@@ -24,6 +24,7 @@ export function renderSpeechBeats(beats: SpeechBeat[]): string {
   return beats.map((beat) => `- On "${beat.triggerWord}": ${beat.cameraMove} + ${beat.gesture} → ${beat.visibleResult}`).join("\n");
 }
 const add = (issues: GenerationIssue[], code: string, severity: IssueSeverity, field: string, message: string) => issues.push({ code, severity, field, message });
+const CONTINUATION_NOTE = "This segment continues directly from the final frame of the previous video segment — use that final frame as the primary visual reference for pose, lighting, and framing continuity, and cross-reference the original product reference photos to keep every product detail (color, cut, pockets, buttons, texture) exactly consistent with them. Do not let the product drift between segments.";
 const trechoKeys = ["trecho1", "trecho2", "trecho3"] as const;
 function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoNormalizado: string, veoTemplate: string, geminiTemplate: string): { promptGemini: string | null; veoPrompts: VeoPrompts; issues: GenerationIssue[] } {
   const issues: GenerationIssue[] = [];
@@ -53,7 +54,7 @@ function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoN
     try {
       if (promptGemini === null) throw new Error("Gemini prompt unavailable");
       const segmentBeats = creative.speechBeats.filter((beat) => normalizeKey(segment.texto).includes(normalizeKey(beat.triggerWord)));
-      veoPrompts[key] = renderVeoTemplate(veoTemplate, { produto: produtoNormalizado, copy_trecho: segment.texto, pov: creative.pov.texto, ambiente: creative.ambiente, figurino: creative.figurino, pose: creative.pose, prompt_gemini: promptGemini, speech_beats: renderSpeechBeats(segmentBeats) });
+      veoPrompts[key] = renderVeoTemplate(veoTemplate, { produto: produtoNormalizado, copy_trecho: segment.texto, pov: creative.pov.texto, ambiente: creative.ambiente, figurino: creative.figurino, pose: creative.pose, prompt_gemini: promptGemini, speech_beats: renderSpeechBeats(segmentBeats), continuidade: index > 0 ? CONTINUATION_NOTE : "" });
     } catch {
       add(issues, "VEO_TEMPLATE_INVALID", "block", `veoPrompts.${key}`, "O template VEO possui variável inválida ou não resolvida.");
     }

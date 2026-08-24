@@ -30,6 +30,12 @@ describe("validação editorial", () => {
     expect(report.creatives[0].veoPrompts.trecho1).toContain('On "água": quick push-in');
     expect(report.creatives[0].veoPrompts.trecho1).not.toMatch(/\{\{|\}\}/u);
   });
+  it("só instrui continuidade com o frame anterior a partir do trecho 2", () => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{continuidade}}");
+    expect(report.creatives[0].veoPrompts.trecho1).toBe("");
+    expect(report.creatives[0].veoPrompts.trecho2).toContain("continues directly from the final frame");
+    expect(report.creatives[0].veoPrompts.trecho2).toContain("original product reference photos");
+  });
   it("bloqueia slot Gemini que instrui remoção de roupa", () => {
     const base = creativeBatchFixture().creatives[0].geminiSlots;
     const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ geminiSlots: { ...base, wardrobeLock: "remova a roupa atual" } }), "{{copy_trecho}}", DEFAULT_GEMINI_TEMPLATE);
