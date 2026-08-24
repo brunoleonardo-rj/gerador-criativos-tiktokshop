@@ -48,7 +48,7 @@ ORDEM DAS REFERÊNCIAS: as primeiras imagens anexadas são a MODELO (identity lo
 
 IDENTITY LOCK:
 {{identidade_ugc}}
-Não altere feições, maquiagem natural leve nem estrutura corporal. IGNORE o calçado das fotos de identidade — o calçado é definido apenas pela seção CALÇADO abaixo.
+Não altere feições, maquiagem natural leve nem estrutura corporal. Não invente tatuagens, sinais, cicatrizes, piercings ou qualquer marca de pele que não esteja visível nas fotos de referência — pele deve ser fiel ao que as fotos mostram, nem mais nem menos. IGNORE o calçado das fotos de identidade — o calçado é definido apenas pela seção CALÇADO abaixo.
 
 PRODUTO: {{produto}}
 
@@ -71,10 +71,10 @@ AÇÃO: {{acao}}
 
 POSE: {{pose}}
 
-ENQUADRAMENTO: da cintura para cima, pés fora de quadro por padrão, câmera fixa em tripé físico fora de quadro na altura do peito, mãos livres e relaxadas, leve ângulo de baixo para cima, foco nítido no rosto e na peça. Se o CENÁRIO, AÇÃO ou POSE acima descreverem um espelho, é uma selfie de espelho: ela deve segurar um smartphone moderno na mão, com o aparelho e o reflexo visíveis. Caso contrário, NÃO é selfie de espelho — nenhuma mão segura aparelho. {{enquadramento_extra}}
+ENQUADRAMENTO: da cintura para cima, pés fora de quadro por padrão, câmera fixa em tripé físico fora de quadro na altura do peito, mãos livres e relaxadas, leve ângulo de baixo para cima, foco nítido no rosto e na peça. Se o CENÁRIO, AÇÃO ou POSE acima descreverem um espelho, é uma selfie de espelho: ela deve segurar um smartphone moderno na mão, com o aparelho e o reflexo visíveis, mas a TELA do aparelho deve estar apagada ou preta — nunca mostre app aberto, fotos, miniaturas de produto, texto ou qualquer interface na tela do celular. Caso contrário, NÃO é selfie de espelho — nenhuma mão segura aparelho. {{enquadramento_extra}}
 
 ÁUDIO: sem áudio. Esta é uma imagem estática.
 
 ESTILO: fotografia natural, iluminação realista, sem efeito de estúdio, textura de pele real com poros e brilho natural, cores fiéis sem filtro saturado, estética autêntica de UGC de TikTok Shop.
 
-RESTRIÇÕES: sem sobreposições visuais, sem texto na tela, sem elementos gráficos, sem marca d'água. Não remover, trocar ou substituir peças de roupa. Não alterar proporções corporais. Peça sem amassados, rugas ou vincos, salvo indicação em contrário no bloco TECIDO.`;
+RESTRIÇÕES: sem sobreposições visuais, sem texto na tela, sem elementos gráficos, sem marca d'água. Nenhuma tela de dispositivo (celular, tablet, monitor) pode exibir app, fotos, miniaturas de produto ou qualquer interface — telas aparecem apagadas ou pretas. Não remover, trocar ou substituir peças de roupa. Não alterar proporções corporais. Peça sem amassados, rugas ou vincos, salvo indicação em contrário no bloco TECIDO.`;

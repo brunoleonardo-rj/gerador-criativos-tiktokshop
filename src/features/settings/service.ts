@@ -24,7 +24,7 @@ CAMERA & MOTION:
 - EXCEPTION FOR PRODUCT BEATS: when the influencer names a specific product feature, the camera is allowed to move faster and more decisively (quick tilt, fast push-in to detail, brief hold) as listed in SPEECH-SYNCED PRODUCT BEATS. These moves must still land smoothly, with a clear settle at the end — quick, but never shaky or jerky.
 - Framing may subtly evolve to increase intimacy or focus, guided by the scene and the product.
 - Avoid static shots, but keep everything smooth and coherent.
-- The camera is on a fixed tripod. The influencer never holds a phone. This is not a mirror selfie.
+- The camera is on a fixed tripod. Whether she holds a phone or not must match exactly what the reference frame shows — never add or remove a phone that isn't already in the frame.
 
 INFLUENCER BEHAVIOR:
 - The influencer behaves naturally, as if recording a real casual video.
@@ -46,7 +46,8 @@ Every time the influencer names a specific feature, the camera and her hands mus
 Timing rule: the hand gesture starts a fraction BEFORE the word and the camera move lands ON the word. Never let her name a feature while the camera stays wide — a named feature that isn't shown is a failed shot.
 
 PRODUCT INTERACTION:
-- The product remains visually accurate at all times.
+- The product must stay pixel-consistent with the reference frame at all times. Never invent, add, or remove product features — no new pockets, buttons, zippers, seams, patterns, logos, or texture that isn't already visible in the reference frame.
+- Her skin must stay pixel-consistent with the reference frame too. Never invent, add, or remove tattoos, marks, scars, or piercings that aren't already visible in the reference frame.
 - If touched or held, hand pressure, grip, and movement must be realistic and proportional.
 - Hands must never cover the feature being named — they frame it, brush alongside it, or gesture toward it, always leaving the detail visible to camera.
 - No distortion, no scale changes, no visual artifacts.
