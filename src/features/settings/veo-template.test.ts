@@ -3,17 +3,16 @@ import { renderVeoTemplate, validateVeoTemplate } from "./veo-template";
 
 describe("VEO template", () => {
   it("rejeita variável VEO desconhecida", () => {
-    expect(validateVeoTemplate("Fale {{copy_completa}} e {{variavel_inventada}}")).toEqual({
+    expect(validateVeoTemplate("Fale {{copy_trecho}} e {{variavel_inventada}}")).toEqual({
       valid: false,
       unknown: ["variavel_inventada"],
     });
   });
 
-  it("renderiza copy completa sem marcadores pendentes", () => {
-    const output = renderVeoTemplate("Produto {{produto}}\nFala: {{copy_completa}}", {
+  it("renderiza o trecho de fala sem marcadores pendentes", () => {
+    const output = renderVeoTemplate("Produto {{produto}}\nFala: {{copy_trecho}}", {
       produto: "Body splash",
-      copy_completa: "Trecho um Trecho dois",
-      copy_trechos: 'Trecho 1: "Trecho um"\nTrecho 2: "Trecho dois"',
+      copy_trecho: "Trecho um",
       pov: "✨ Cheiro de presença",
       ambiente: "Quarto",
       figurino: "Conjunto casual",
@@ -22,7 +21,7 @@ describe("VEO template", () => {
       speech_beats: '- On "leve": quick push-in + brush the fabric → fabric remains visible',
     });
 
-    expect(output).toContain("Fala: Trecho um Trecho dois");
+    expect(output).toContain("Fala: Trecho um");
     expect(output).not.toMatch(/{{/);
   });
 
@@ -36,8 +35,7 @@ describe("VEO template", () => {
   it("não renderiza valores ausentes ou marcadores pendentes", () => {
     const values = {
       produto: "Body splash",
-      copy_completa: "Trecho um Trecho dois",
-      copy_trechos: 'Trecho 1: "Trecho um"\nTrecho 2: "Trecho dois"',
+      copy_trecho: "Trecho um",
       pov: "✨ Cheiro de presença",
       ambiente: "Quarto",
       figurino: "Conjunto casual",
@@ -54,8 +52,7 @@ describe("VEO template", () => {
   it("renderiza os speech beats no template VEO", () => {
     const output = renderVeoTemplate("BEATS:\n{{speech_beats}}", {
       produto: "Body splash",
-      copy_completa: "Ele fixa bem na pele",
-      copy_trechos: 'Trecho 1: "Ele fixa bem"\nTrecho 2: "na pele"',
+      copy_trecho: "Ele fixa bem",
       pov: "Cheiro marcante ✨",
       ambiente: "Quarto",
       figurino: "Conjunto casual",

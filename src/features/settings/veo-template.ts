@@ -1,7 +1,6 @@
 export const VEO_VARIABLES = [
   "produto",
-  "copy_completa",
-  "copy_trechos",
+  "copy_trecho",
   "pov",
   "ambiente",
   "figurino",

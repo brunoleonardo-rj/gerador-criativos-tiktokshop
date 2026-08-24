@@ -19,7 +19,7 @@ class InMemorySettingsRepository implements SettingsRepository {
   }
 
   async update(input: { encryptedApiKey?: EncryptedSecret; apiKeyLastFour?: string; model: string; veoTemplate: string; geminiTemplate: string }) {
-    const current = await this.getOrCreate("{{copy_completa}}", "{{produto}}");
+    const current = await this.getOrCreate("{{copy_trecho}}", "{{produto}}");
     this.record = {
       ...current,
       encryptedApiKey: input.encryptedApiKey ?? current.encryptedApiKey,
@@ -33,7 +33,7 @@ class InMemorySettingsRepository implements SettingsRepository {
   }
 
   async deleteApiKey(): Promise<void> {
-    const current = await this.getOrCreate("{{copy_completa}}", "{{produto}}");
+    const current = await this.getOrCreate("{{copy_trecho}}", "{{produto}}");
     this.record = { ...current, encryptedApiKey: null, apiKeyLastFour: null };
   }
 }
@@ -43,7 +43,7 @@ describe("SettingsService", () => {
     const repository = new InMemorySettingsRepository();
     const service = new SettingsService(repository, Buffer.alloc(32, 4));
 
-    await service.update({ apiKey: "sk-ant-1234567890", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" });
+    await service.update({ apiKey: "sk-ant-1234567890", model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" });
 
     expect(await service.getPublic()).toMatchObject({ apiKeyConfigured: true, apiKeyMask: "••••7890" });
     expect(JSON.stringify(await service.getPublic())).not.toContain("sk-ant-");
@@ -51,7 +51,7 @@ describe("SettingsService", () => {
 
   it("só descriptografa a chave para configurações de geração", async () => {
     const service = new SettingsService(new InMemorySettingsRepository(), Buffer.alloc(32, 4));
-    await service.update({ apiKey: "sk-ant-1234567890", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" });
+    await service.update({ apiKey: "sk-ant-1234567890", model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" });
 
     expect(await service.getGenerationSettings()).toMatchObject({ apiKey: "sk-ant-1234567890", model: "claude-sonnet-5", geminiTemplate: "{{produto}}" });
   });
@@ -67,7 +67,7 @@ describe("SettingsService", () => {
   it("não salva um template Gemini com variáveis desconhecidas", async () => {
     const service = new SettingsService(new InMemorySettingsRepository(), Buffer.alloc(32, 4));
 
-    await expect(service.update({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{inventada}}" }))
+    await expect(service.update({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{inventada}}" }))
       .rejects.toThrow("Template Gemini contém variáveis não permitidas: inventada.");
   });
 });

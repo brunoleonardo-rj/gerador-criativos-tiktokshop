@@ -20,13 +20,20 @@ export function buildCreativePackage(creative: CreativeEnvelope) {
   addSection(parts, "POV", creative.pov.texto, isBlocked(creative, "pov"));
   addSection(parts, "Texto na tela", creative.textoNaTela, isBlocked(creative, "textoNaTela"));
   addSection(parts, "Prompt Gemini", creative.promptGemini, isBlocked(creative, "promptGemini"));
-  addSection(parts, "Prompt VEO 3", creative.veoPrompt, isBlocked(creative, "veoPrompt"));
+  addSection(parts, "Prompt VEO 3 — Trecho 1", creative.veoPrompts.trecho1, isBlocked(creative, "veoPrompts.trecho1"));
+  addSection(parts, "Prompt VEO 3 — Trecho 2", creative.veoPrompts.trecho2, isBlocked(creative, "veoPrompts.trecho2"));
+  addSection(parts, "Prompt VEO 3 — Trecho 3", creative.veoPrompts.trecho3, isBlocked(creative, "veoPrompts.trecho3"));
   return parts.join("\n\n");
 }
 function CopyField({ label, text, blocked }: { label: string; text: string | null; blocked: boolean }) { return <CopyButton label={label} text={text} disabled={blocked || !text} />; }
 function CopySegment({ creative, index }: { creative: CreativeEnvelope; index: 1 | 2 | 3 }) {
   const segment = creative.copy[`trecho${index}`]; if (!segment) return null; const blocked = isBlocked(creative, `copy.trecho${index}`);
   return <section className={styles.field}><h3>Copy — trecho {index}</h3><p className={styles.text}>{segment.texto}</p><p className={styles.text}>Segundos: {segment.segundos}. Palavras reais: {creative.actualCounts[`trecho${index}`]}.</p><CopyField label={`Copiar trecho ${index}`} text={segment.texto} blocked={blocked} /></section>;
+}
+function VeoPromptCard({ creative, index }: { creative: CreativeEnvelope; index: 1 | 2 | 3 }) {
+  if (!creative.copy[`trecho${index}`]) return null;
+  const prompt = creative.veoPrompts[`trecho${index}`]; const blocked = isBlocked(creative, `veoPrompts.trecho${index}`);
+  return <section className={styles.field}><h3>Prompt VEO 3 — Trecho {index}</h3><pre className={styles.prompt}>{prompt ?? "Prompt VEO 3 indisponível."}</pre><CopyField label={`Copiar Prompt VEO 3 — Trecho ${index}`} text={prompt} blocked={blocked} /></section>;
 }
 export function ResultCard({ creative }: { creative: CreativeEnvelope }) {
   const packageText = buildCreativePackage(creative);
@@ -47,7 +54,7 @@ export function ResultCard({ creative }: { creative: CreativeEnvelope }) {
     <section className={styles.field}><h3>POV</h3><p className={styles.text}>{creative.pov.texto}</p><p className={styles.text}>Palavras reais: {creative.actualCounts.pov}.</p><CopyField label="Copiar POV" text={creative.pov.texto} blocked={isBlocked(creative, "pov")} /></section>
     <section className={styles.field}><h3>Texto na tela</h3><p className={styles.text}>{screenText}</p><CopyField label="Copiar texto na tela" text={screenText} blocked={isBlocked(creative, "textoNaTela")} /></section>
     <section className={styles.field}><h3>Prompt Gemini</h3><pre className={styles.prompt}>{creative.promptGemini}</pre><CopyField label="Copiar Prompt Gemini" text={creative.promptGemini} blocked={isBlocked(creative, "promptGemini")} /></section>
-    <section className={styles.field}><h3>Prompt VEO 3</h3><pre className={styles.prompt}>{creative.veoPrompt ?? "Prompt VEO 3 indisponível."}</pre><CopyField label="Copiar Prompt VEO 3" text={creative.veoPrompt} blocked={isBlocked(creative, "veoPrompt")} /></section>
+    <VeoPromptCard creative={creative} index={1} /><VeoPromptCard creative={creative} index={2} /><VeoPromptCard creative={creative} index={3} />
     <section className={styles.field}><h3>Descarte</h3><p className={styles.text}>{discard}</p><CopyField label="Copiar descarte" text={discard} blocked={false} /></section>
     <section className={styles.field}><h3>Alertas do criativo</h3>{creative.issues.length ? <ul>{creative.issues.map((issue, index) => <li key={`${issue.code}-${issue.field}-${index}`}><strong>{issue.severity === "block" ? "Bloqueio" : "Atenção"}: </strong>{issue.message}</li>)}</ul> : <p className={styles.text}>Nenhum alerta.</p>}<CopyField label="Copiar alertas do criativo" text={alerts} blocked={false} /></section>
     <div className={styles.packageAction}><CopyButton label="Copiar pacote completo" text={packageText} disabled={!packageText} /></div>

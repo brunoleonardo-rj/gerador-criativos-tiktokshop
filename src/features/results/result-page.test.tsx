@@ -5,7 +5,7 @@ import { generationInputFixture, creativeBatchFixture } from "../../../tests/fix
 import { validateCreativeBatch } from "@/features/generation/validation";
 
 const id = "11111111-1111-4111-8111-111111111111";
-const result = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{copy_completa}}");
+const result = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{copy_trecho}}");
 describe("ResultPage", () => {
   afterEach(() => cleanup());
   it("loads the current browser result once from storage", async () => {
@@ -18,12 +18,12 @@ describe("ResultPage", () => {
   it("re-renders prompts and persists them when the saved templates changed since generation", async () => {
     const getResult = vi.fn().mockResolvedValue({ ...result, id, settingsUpdatedAt: null });
     const putResult = vi.fn().mockResolvedValue(undefined);
-    const fetchCurrentTemplates = vi.fn().mockResolvedValue({ veoTemplate: "ATUALIZADO {{copy_completa}}", geminiTemplate: "GEMINI {{produto}}", updatedAt: "2026-08-24T00:00:00.000Z" });
+    const fetchCurrentTemplates = vi.fn().mockResolvedValue({ veoTemplate: "ATUALIZADO {{copy_trecho}}", geminiTemplate: "GEMINI {{produto}}", updatedAt: "2026-08-24T00:00:00.000Z" });
     render(<ResultPage id={id} storage={{ getResult, putResult }} fetchCurrentTemplates={fetchCurrentTemplates} />);
     await screen.findByText("Garrafa térmica");
     await waitFor(() => expect(putResult).toHaveBeenCalledOnce());
     expect(putResult).toHaveBeenCalledWith(expect.objectContaining({ id, settingsUpdatedAt: "2026-08-24T00:00:00.000Z" }));
-    expect(await screen.findByText(/ATUALIZADO/)).toBeInTheDocument();
+    expect((await screen.findAllByText(/ATUALIZADO/)).length).toBeGreaterThan(0);
   });
   it("renders safe missing state for rejected or absent browser storage", async () => {
     const { rerender } = render(<ResultPage id={id} storage={{ getResult: vi.fn().mockRejectedValue(new Error("db")) }} />);

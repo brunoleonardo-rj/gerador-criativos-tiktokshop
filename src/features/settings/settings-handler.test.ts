@@ -5,7 +5,7 @@ const publicSettings = {
   apiKeyConfigured: true,
   apiKeyMask: "••••7890",
   model: "claude-sonnet-5",
-  veoTemplate: "{{copy_completa}}",
+  veoTemplate: "{{copy_trecho}}",
   geminiTemplate: "{{produto}}",
   updatedAt: new Date("2026-08-21T12:00:00.000Z"),
 };
@@ -41,7 +41,7 @@ describe("settings handlers", () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => { throw new Error("bad origin"); } });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" }) }));
 
     expect(response.status).toBe(403);
     expect(service.update).not.toHaveBeenCalled();
@@ -93,7 +93,7 @@ describe("settings handlers", () => {
   it("aceita um JSON válido próximo ao limite", async () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
-    const veoTemplate = "{{copy_completa}}" + "a".repeat(30_000 - "{{copy_completa}}".length);
+    const veoTemplate = "{{copy_trecho}}" + "a".repeat(30_000 - "{{copy_trecho}}".length);
     const geminiTemplate = "{{produto}}" + "b".repeat(30_000 - "{{produto}}".length);
 
     const response = await handlers.PUT(new Request("http://local/api/settings", {
@@ -110,10 +110,10 @@ describe("settings handlers", () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ apiKey: "", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ apiKey: "", model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" }) }));
 
     expect(response.status).toBe(200);
-    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" });
+    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" });
   });
 
   it("retorna erro de validação sem detalhes internos", async () => {
@@ -140,7 +140,7 @@ describe("settings handlers", () => {
     service.update.mockRejectedValue(new Error("sk-ant-secret must not leak"));
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" }) }));
 
     expect(response.status).toBe(500);
     expect(await response.text()).not.toContain("sk-ant-secret");

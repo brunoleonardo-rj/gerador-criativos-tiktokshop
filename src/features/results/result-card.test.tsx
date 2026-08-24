@@ -6,7 +6,7 @@ import { generationInputFixture, creativeBatchFixture } from "../../../tests/fix
 import { validateCreativeBatch } from "@/features/generation/validation";
 import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
 
-function result() { return validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "VEO {{copy_completa}}", DEFAULT_GEMINI_TEMPLATE, "2026-08-21T12:00:00.000Z").creatives[0]; }
+function result() { return validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "VEO {{copy_trecho}}", DEFAULT_GEMINI_TEMPLATE, "2026-08-21T12:00:00.000Z").creatives[0]; }
 describe("ResultCard", () => {
   afterEach(() => cleanup());
   it("offers a copy control for every displayed creative field", () => {
@@ -15,7 +15,7 @@ describe("ResultCard", () => {
     for (const name of [
       "Copiar ID", "Copiar ângulo", "Copiar status", "Copiar ambiente", "Copiar figurino", "Copiar pose",
       "Copiar trecho 1", "Copiar trecho 2", "Copiar descrição", "Copiar hashtags", "Copiar POV",
-      "Copiar texto na tela", "Copiar Prompt Gemini", "Copiar Prompt VEO 3", "Copiar descarte", "Copiar alertas do criativo",
+      "Copiar texto na tela", "Copiar Prompt Gemini", "Copiar Prompt VEO 3 — Trecho 1", "Copiar Prompt VEO 3 — Trecho 2", "Copiar descarte", "Copiar alertas do criativo",
     ]) expect(screen.getByRole("button", { name })).toBeInTheDocument();
   });
 
@@ -23,15 +23,15 @@ describe("ResultCard", () => {
     const creative = { ...result(), issues: [{ code: "PRICE", severity: "block" as const, field: "descricao", message: "Preço proibido" }], status: "blocked" as const };
     render(<ResultCard creative={creative} />);
     expect(screen.getByRole("button", { name: "Copiar descrição" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeEnabled();
   });
 
   it("keeps warning fields copyable and keeps null VEO disabled", () => {
     const warning = { ...result(), issues: [{ code: "WORDS", severity: "warning" as const, field: "descricao", message: "Revise" }], status: "needs_review" as const };
     const { rerender } = render(<ResultCard creative={warning} />);
     expect(screen.getByRole("button", { name: "Copiar descrição" })).toBeEnabled();
-    rerender(<ResultCard creative={{ ...warning, veoPrompt: null }} />);
-    expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3" })).toBeDisabled();
+    rerender(<ResultCard creative={{ ...warning, veoPrompts: { trecho1: null, trecho2: null, trecho3: null } }} />);
+    expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeDisabled();
   });
 
   it("blocks POV subfields without blocking another copy field", () => {

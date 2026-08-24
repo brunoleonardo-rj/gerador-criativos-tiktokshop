@@ -4,7 +4,8 @@ import { creativeBatchSchema, generationInputSchema, type CreativeBatch, type Ge
 
 export type IssueSeverity = "warning" | "block";
 export type GenerationIssue = { code: string; severity: IssueSeverity; field: string; message: string };
-export type CreativeEnvelope = CreativeBatch["creatives"][number] & { promptGemini: string | null; veoPrompt: string | null; actualCounts: { trecho1: number; trecho2: number; trecho3: number | null; pov: number }; issues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked" };
+export type VeoPrompts = { trecho1: string | null; trecho2: string | null; trecho3: string | null };
+export type CreativeEnvelope = CreativeBatch["creatives"][number] & { promptGemini: string | null; veoPrompts: VeoPrompts; actualCounts: { trecho1: number; trecho2: number; trecho3: number | null; pov: number }; issues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked" };
 export type GenerationEnvelope = Omit<CreativeBatch, "creatives"> & { creatives: CreativeEnvelope[]; batchIssues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked"; settingsUpdatedAt: string | null };
 
 const AMOUNT = "(?:\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?|\\d+)";
@@ -22,12 +23,9 @@ export function containsMoney(text: string): boolean { return MONEY.test(text.no
 export function renderSpeechBeats(beats: SpeechBeat[]): string {
   return beats.map((beat) => `- On "${beat.triggerWord}": ${beat.cameraMove} + ${beat.gesture} → ${beat.visibleResult}`).join("\n");
 }
-export function renderCopyTrechos(segments: Array<{ texto: string } | null>): string {
-  return segments.map((segment, index) => segment ? `Trecho ${index + 1}: "${segment.texto}"` : null).filter((line): line is string => line !== null).join("\n");
-}
-
 const add = (issues: GenerationIssue[], code: string, severity: IssueSeverity, field: string, message: string) => issues.push({ code, severity, field, message });
-function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoNormalizado: string, veoTemplate: string, geminiTemplate: string): { promptGemini: string | null; veoPrompt: string | null; issues: GenerationIssue[] } {
+const trechoKeys = ["trecho1", "trecho2", "trecho3"] as const;
+function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoNormalizado: string, veoTemplate: string, geminiTemplate: string): { promptGemini: string | null; veoPrompts: VeoPrompts; issues: GenerationIssue[] } {
   const issues: GenerationIssue[] = [];
   let promptGemini: string | null = null;
   try {
@@ -47,22 +45,27 @@ function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoN
   } catch {
     add(issues, "GEMINI_TEMPLATE_INVALID", "block", "promptGemini", "O template Gemini possui variável inválida ou não resolvida.");
   }
-  const spokenText = [creative.copy.trecho1, creative.copy.trecho2, creative.copy.trecho3].filter((segment): segment is NonNullable<typeof segment> => segment !== null).map((segment) => segment.texto).join(" ");
-  let veoPrompt: string | null = null;
-  try {
-    if (promptGemini === null) throw new Error("Gemini prompt unavailable");
-    veoPrompt = renderVeoTemplate(veoTemplate, { produto: produtoNormalizado, copy_completa: spokenText, copy_trechos: renderCopyTrechos([creative.copy.trecho1, creative.copy.trecho2, creative.copy.trecho3]), pov: creative.pov.texto, ambiente: creative.ambiente, figurino: creative.figurino, pose: creative.pose, prompt_gemini: promptGemini, speech_beats: renderSpeechBeats(creative.speechBeats) });
-  } catch {
-    add(issues, "VEO_TEMPLATE_INVALID", "block", "veoPrompt", "O template VEO possui variável inválida ou não resolvida.");
-  }
-  return { promptGemini, veoPrompt, issues };
+  const segments = [creative.copy.trecho1, creative.copy.trecho2, creative.copy.trecho3];
+  const veoPrompts: VeoPrompts = { trecho1: null, trecho2: null, trecho3: null };
+  segments.forEach((segment, index) => {
+    if (!segment) return;
+    const key = trechoKeys[index];
+    try {
+      if (promptGemini === null) throw new Error("Gemini prompt unavailable");
+      const segmentBeats = creative.speechBeats.filter((beat) => normalizeKey(segment.texto).includes(normalizeKey(beat.triggerWord)));
+      veoPrompts[key] = renderVeoTemplate(veoTemplate, { produto: produtoNormalizado, copy_trecho: segment.texto, pov: creative.pov.texto, ambiente: creative.ambiente, figurino: creative.figurino, pose: creative.pose, prompt_gemini: promptGemini, speech_beats: renderSpeechBeats(segmentBeats) });
+    } catch {
+      add(issues, "VEO_TEMPLATE_INVALID", "block", `veoPrompts.${key}`, "O template VEO possui variável inválida ou não resolvida.");
+    }
+  });
+  return { promptGemini, veoPrompts, issues };
 }
 export function refreshPrompts(envelope: GenerationEnvelope, veoTemplate: string, geminiTemplate: string, settingsUpdatedAt: string | null): GenerationEnvelope {
   const creatives = envelope.creatives.map((creative) => {
     const rendered = renderPromptsFor(creative, envelope.produtoNormalizado, veoTemplate, geminiTemplate);
     const issues = [...creative.issues.filter((issue) => issue.code !== "GEMINI_TEMPLATE_INVALID" && issue.code !== "VEO_TEMPLATE_INVALID"), ...rendered.issues];
     const status: CreativeEnvelope["status"] = issues.some((issue) => issue.severity === "block") ? "blocked" : issues.length ? "needs_review" : "valid";
-    return { ...creative, promptGemini: rendered.promptGemini, veoPrompt: rendered.veoPrompt, issues, status };
+    return { ...creative, promptGemini: rendered.promptGemini, veoPrompts: rendered.veoPrompts, issues, status };
   });
   const status: GenerationEnvelope["status"] = envelope.batchIssues.some((issue) => issue.severity === "block") || creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
   return { ...envelope, creatives, status, settingsUpdatedAt };
@@ -144,11 +147,11 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     if (creative.descartavel && creative.motivoDescartavel) add(issues, "CREATIVE_DISCARDED", "warning", "motivoDescartavel", `Criativo marcado como descartável: ${creative.motivoDescartavel}`);
     const rendered = renderPromptsFor(creative, safeBatch.produtoNormalizado, veoTemplate, geminiTemplate);
     const promptGemini = rendered.promptGemini;
-    const veoPrompt = rendered.veoPrompt;
+    const veoPrompts = rendered.veoPrompts;
     issues.push(...rendered.issues);
     const actualCounts = { trecho1: countWords(creative.copy.trecho1.texto), trecho2: countWords(creative.copy.trecho2.texto), trecho3: creative.copy.trecho3 ? countWords(creative.copy.trecho3.texto) : null, pov: actualPov };
     const status: CreativeEnvelope["status"] = issues.some((issue) => issue.severity === "block") ? "blocked" : issues.length ? "needs_review" : "valid";
-    return { ...creative, motivoDescartavel: creative.descartavel ? creative.motivoDescartavel : null, promptGemini, veoPrompt, actualCounts, issues, status };
+    return { ...creative, motivoDescartavel: creative.descartavel ? creative.motivoDescartavel : null, promptGemini, veoPrompts, actualCounts, issues, status };
   });
   const status = batchIssues.some((issue) => issue.severity === "block") || creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
   return { ...safeBatch, creatives, batchIssues, status, settingsUpdatedAt };
