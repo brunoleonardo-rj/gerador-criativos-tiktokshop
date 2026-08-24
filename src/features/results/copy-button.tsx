@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import styles from "./results.module.css";
 
 type CopyButtonProps = { text: string | null | undefined; label: string; disabled?: boolean };
 
@@ -20,5 +21,5 @@ export function CopyButton({ text, label, disabled = false }: CopyButtonProps) {
     catch { if (mounted.current) setMessage("Não foi possível copiar. Tente novamente."); }
     finally { locked.current = false; if (mounted.current) setPending(false); }
   }
-  return <span className="inline-flex items-center gap-2"><button type="button" onClick={() => void copy()} disabled={!enabled}>{label}</button><span role="status" aria-live="polite" className="sr-only">{message}</span></span>;
+  return <span className={styles.copyControl}><button className={styles.copyButton} type="button" onClick={() => void copy()} disabled={!enabled}>{label}</button><span role="status" aria-live="polite" className="sr-only">{message}</span></span>;
 }

@@ -234,6 +234,7 @@
 
 .referencesStep {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.35rem;
 }
 
@@ -443,7 +444,8 @@
   cursor: pointer;
 }
 
-.productUploader input[type="file"] {
+.productUploader input[type="file"],
+.referenceUploader input[type="file"] {
   max-width: 100%;
 }
 

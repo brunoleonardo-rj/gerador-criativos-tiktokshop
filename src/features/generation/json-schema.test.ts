@@ -7,12 +7,19 @@ function everyObjectIsClosed(value: unknown): boolean {
   const record = value as Record<string, unknown>;
   return (record.type !== "object" || record.additionalProperties === false) && Object.values(record).every(everyObjectIsClosed);
 }
+function findProperty(value: unknown, name: string): unknown {
+  if (Array.isArray(value)) return value.map((item) => findProperty(item, name)).find(Boolean);
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const properties = record.properties as Record<string, unknown> | undefined;
+  if (properties && name in properties) return properties[name];
+  return Object.values(record).map((item) => findProperty(item, name)).find(Boolean);
+}
 describe("Anthropic JSON Schema", () => {
   it("fecha todos os objetos e permite trecho3 nulo", () => {
     const format = getAnthropicOutputFormat();
     expect(everyObjectIsClosed(format.schema)).toBe(true);
-    const root = format.schema as { properties: Record<string, { items: { properties: Record<string, { properties: Record<string, unknown> }> } }> };
-    const copy = root.properties.creatives.items.properties.copy.properties.trecho3;
-    expect(JSON.stringify(copy)).toContain("null");
+    expect(JSON.stringify(format.schema)).not.toMatch(/"(?:minimum|maximum|minLength|maxLength|maxItems)":/);
+    expect(JSON.stringify(findProperty(format.schema, "trecho3"))).toContain("null");
   });
 });

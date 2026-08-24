@@ -51,6 +51,9 @@ describe("AnthropicProductExtractionAdapter", () => {
       .extract("secret", request(), signal);
 
     expect(result.nomeProduto).toBe("Garrafa");
+    const schema = create.mock.calls[0]?.[0]?.output_config?.format?.schema;
+    const serializedSchema = JSON.stringify(schema);
+    expect(serializedSchema).not.toMatch(/"(?:minimum|maximum|minLength|maxLength|maxItems)":/);
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
       model: "claude-test",
       max_tokens: 4_000,

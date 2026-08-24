@@ -10,6 +10,7 @@ import { generationInputSchema, type GenerationInput } from "@/features/generati
 import type { GenerationEnvelope } from "@/features/generation/validation";
 import { getProductSourceImages, imageSelectionKey } from "@/features/product-extraction/image-selection";
 import { productExtractionSchema, type ProductExtraction } from "@/features/product-extraction/schema";
+import { prepareSourceImages } from "@/features/uploads/analysis-images";
 import { DirectionStep } from "./direction-step";
 import { ProductStep, type ProductStepState } from "./product-step";
 import { ReferencesStep, type ReferenceError } from "./references-step";
@@ -443,7 +444,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
     const analyzedKey = imageSelectionKey(sources);
     try {
       const data = new FormData();
-      for (const image of sources) data.append("source", new File([image.blob], image.name, { type: image.type }));
+      for (const image of await prepareSourceImages(sources)) data.append("source", new File([image.blob], image.name, { type: image.type }));
       const extraction = await services.extractProduct(data);
       if (!mounted.current) return;
       form.reset(extractionValues(form.getValues(), extraction));
@@ -514,7 +515,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
     try {
       const data = new FormData();
       data.set("payload", JSON.stringify(input));
-      for (const image of getProductSourceImages(images)) {
+      for (const image of await prepareSourceImages(getProductSourceImages(images))) {
         data.append(image.role, new File([image.blob], image.name, { type: image.type }));
       }
       const result = await services.generate(data);

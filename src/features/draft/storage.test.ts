@@ -72,6 +72,14 @@ describe("assetStorage", () => {
     expect(await assetStorage.listImages()).toEqual([]);
   });
 
+  it("stores an original long screenshot until it is tiled for analysis", async () => {
+    const screenshot = { ...image, width: 1920, height: 13_717, size: 2_732_067, name: "page.png", type: "image/png" as const, blob: new Blob(["page"], { type: "image/png" }) };
+
+    await assetStorage.putImage(screenshot);
+
+    expect(await assetStorage.listImages()).toMatchObject([{ width: 1920, height: 13_717, name: "page.png" }]);
+  });
+
   it("keeps generation results isolated from images", async () => {
     const result = { ...validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_completa}}"), id: "0ed35cb8-4f88-4ded-9f51-08404fc0f34f" };
     await assetStorage.putImage(image);

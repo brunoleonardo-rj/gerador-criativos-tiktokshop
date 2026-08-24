@@ -1,4 +1,5 @@
 export const MAX_IMAGE_SIDE = 1568;
+export const LONG_SCREENSHOT_RATIO = 4;
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 export type AcceptedImageType = (typeof ACCEPTED_IMAGE_TYPES)[number];
 export type ResizedImage = { blob: Blob; name: string; type: AcceptedImageType; width: number; height: number; size: number };
@@ -33,6 +34,16 @@ export async function resizeImage(file: File): Promise<ResizedImage> {
   let source: ImageBitmap | undefined;
   try {
     source = await createImageBitmap(file, { imageOrientation: "from-image" });
+    if (source.height / source.width >= LONG_SCREENSHOT_RATIO) {
+      return {
+        blob: file,
+        name: renamedFile(file.name, file.type),
+        type: file.type,
+        width: source.width,
+        height: source.height,
+        size: file.size,
+      };
+    }
     const dimensions = calculateResizeDimensions(source.width, source.height);
     const canvas = document.createElement("canvas");
     canvas.width = dimensions.width;

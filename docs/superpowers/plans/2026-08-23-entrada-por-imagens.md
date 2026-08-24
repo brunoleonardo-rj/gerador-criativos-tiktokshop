@@ -503,7 +503,7 @@ git commit -m "feat: integrate image extraction into generation wizard"
 **Interfaces:**
 - No new public interface; this task verifies the assembled behavior.
 
-- [ ] **Step 1: Run focused server and client suites**
+- [x] **Step 1: Run focused server and client suites**
 
 Run:
 
@@ -513,7 +513,7 @@ pnpm test src/features/product-extraction src/features/uploads src/features/wiza
 
 Expected: all focused tests PASS with zero unhandled errors.
 
-- [ ] **Step 2: Run the complete quality gate**
+- [x] **Step 2: Run the complete quality gate**
 
 Run each command separately and require exit code 0:
 
@@ -524,15 +524,15 @@ pnpm typecheck
 pnpm build
 ```
 
-- [ ] **Step 3: Verify desktop layout in the authenticated local app**
+- [x] **Step 3: Verify desktop layout in the authenticated local app**
 
 Start `pnpm dev`, open `/` using the in-app browser, sign in with the configured local admin credentials, and capture the Product upload state at approximately 1440 × 900. Confirm that only images are requested, the dropzone and actions are aligned, and no content overflows.
 
-- [ ] **Step 4: Verify analysis/review and mobile layout**
+- [x] **Step 4: Verify analysis/review and mobile layout**
 
 Use the fake Anthropic development adapter or a deterministic test fixture to exercise upload → analysis → review without spending a real API call. Inspect review at desktop and approximately 390 × 844. Confirm keyboard focus, readable validation, single-column fields and reachable actions.
 
-- [ ] **Step 5: Add a regression test before fixing any discovered issue**
+- [x] **Step 5: Add a regression test before fixing any discovered issue**
 
 For every behavioral defect found, first add the smallest failing Vitest/Testing Library test, run it to confirm RED, apply the minimal fix, and rerun to GREEN. Pure visual spacing fixes may be made in CSS after screenshot evidence.
 

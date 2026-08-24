@@ -1,10 +1,21 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import { ResultSummary } from "./result-summary";
 import { generationInputFixture, creativeBatchFixture } from "../../../tests/fixtures/creative-result";
 import { validateCreativeBatch } from "@/features/generation/validation";
 
 describe("ResultSummary", () => {
+  afterEach(() => cleanup());
+  it("offers a copy control for every displayed summary field", () => {
+    const result = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{copy_completa}}", "2026-08-21T12:00:00.000Z");
+    render(<ResultSummary result={result} />);
+
+    for (const name of [
+      "Copiar produto", "Copiar status geral", "Copiar configuração usada", "Copiar fatos verificados",
+      "Copiar riscos detectados", "Copiar checklist de publicação", "Copiar alertas da geração",
+    ]) expect(screen.getByRole("button", { name })).toBeInTheDocument();
+  });
+
   it("shows status, safe date and explicit empty states", () => {
     const result = validateCreativeBatch(generationInputFixture(), { ...creativeBatchFixture(), fatos: [], riscos: [], checklistPublicacao: [] }, "{{copy_completa}}", "2026-08-21T12:00:00.000Z");
     render(<ResultSummary result={result} />);

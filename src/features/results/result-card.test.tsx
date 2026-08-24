@@ -8,6 +8,16 @@ import { validateCreativeBatch } from "@/features/generation/validation";
 function result() { return validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "VEO {{copy_completa}}", "2026-08-21T12:00:00.000Z").creatives[0]; }
 describe("ResultCard", () => {
   afterEach(() => cleanup());
+  it("offers a copy control for every displayed creative field", () => {
+    render(<ResultCard creative={result()} />);
+
+    for (const name of [
+      "Copiar ID", "Copiar ângulo", "Copiar status", "Copiar ambiente", "Copiar figurino", "Copiar pose",
+      "Copiar trecho 1", "Copiar trecho 2", "Copiar descrição", "Copiar hashtags", "Copiar POV",
+      "Copiar texto na tela", "Copiar Prompt Gemini", "Copiar Prompt VEO 3", "Copiar descarte", "Copiar alertas do criativo",
+    ]) expect(screen.getByRole("button", { name })).toBeInTheDocument();
+  });
+
   it("blocks only description while VEO stays copyable", () => {
     const creative = { ...result(), issues: [{ code: "PRICE", severity: "block" as const, field: "descricao", message: "Preço proibido" }], status: "blocked" as const };
     render(<ResultCard creative={creative} />);

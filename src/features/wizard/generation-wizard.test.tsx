@@ -19,6 +19,13 @@ vi.mock("@/features/uploads/resize", async (importOriginal) => ({
   })),
 }));
 
+vi.mock("@/features/uploads/analysis-images", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/uploads/analysis-images")>()),
+  prepareSourceImages: vi.fn(async (images: StoredImage[]) => images.flatMap((image) => image.height / image.width >= 4
+    ? Array.from({ length: 8 }, (_, index) => ({ role: image.role, blob: new Blob([`part-${index + 1}`], { type: image.type }), type: image.type, name: `page-parte-${index + 1}.png` }))
+    : [{ role: image.role, blob: image.blob, type: image.type, name: image.name }])),
+}));
+
 const base = generationInputFixture({ perfilUgc: "sem_pessoa" });
 const product: StoredImage = { id: "11111111-1111-4111-8111-111111111111", role: "product", blob: new Blob(["product"], { type: "image/jpeg" }), name: "product.jpg", type: "image/jpeg", width: 400, height: 400, size: 7 };
 const ad: StoredImage = { ...product, id: "33333333-3333-4333-8333-333333333333", role: "ad", name: "ad.jpg" };
@@ -169,6 +176,21 @@ describe("GenerationWizard", () => {
     await waitFor(() => expect(saveDraft).toHaveBeenLastCalledWith(expect.objectContaining({ nomeProduto: "Garrafa" })));
   });
 
+  it("sends a single long capture as eight readable parts during extraction", async () => {
+    const screenshot: StoredImage = { ...product, blob: new Blob(["long"], { type: "image/png" }), name: "page.png", type: "image/png", width: 1920, height: 13_717, size: 2_732_067 };
+    const extractProduct = vi.fn(async (form: FormData) => {
+      expect(form.getAll("source").map((entry) => entry instanceof File ? entry.name : "text"))
+        .toEqual(Array.from({ length: 8 }, (_, index) => `page-parte-${index + 1}.png`));
+      return validExtraction;
+    });
+    const user = userEvent.setup();
+    render(<GenerationWizard services={services({ listImages: async () => [screenshot], extractProduct })} />);
+
+    await analyze(user);
+
+    await waitFor(() => expect(extractProduct).toHaveBeenCalledOnce());
+  });
+
   it("prevents duplicate extraction requests while analysis is pending", async () => {
     let resolveExtraction!: (value: ProductExtraction) => void;
     const extractProduct = vi.fn(() => new Promise<ProductExtraction>((resolve) => { resolveExtraction = resolve; }));
@@ -178,7 +200,7 @@ describe("GenerationWizard", () => {
     fireEvent.click(button);
     fireEvent.click(button);
 
-    expect(extractProduct).toHaveBeenCalledOnce();
+    await waitFor(() => expect(extractProduct).toHaveBeenCalledOnce());
     expect(await screen.findByRole("status")).toHaveTextContent(/lendo os dados do produto/i);
     resolveExtraction(validExtraction);
     expect(await screen.findByLabelText("Nome do produto")).toHaveValue("Garrafa");

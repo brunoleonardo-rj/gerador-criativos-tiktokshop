@@ -10,6 +10,7 @@ export function failureForAnthropic(error: unknown, signal: AbortSignal): Genera
   if (error instanceof GenerationFailure) return error;
   if (signal.aborted || (error instanceof Error && error.name === "AbortError")) return new GenerationFailure("TIMEOUT");
   const status = typeof error === "object" && error !== null && "status" in error ? (error as { status?: unknown }).status : undefined;
+  if (status === 400) return new GenerationFailure("INVALID_MODEL_OUTPUT");
   if (status === 401 || status === 403) return new GenerationFailure("INVALID_API_KEY");
   if (status === 429) return new GenerationFailure("RATE_LIMITED");
   return new GenerationFailure("UPSTREAM_UNAVAILABLE");

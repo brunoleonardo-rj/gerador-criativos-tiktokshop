@@ -31,6 +31,20 @@ describe("calculateResizeDimensions", () => {
 });
 
 describe("resizeImage", () => {
+  it("preserves a very long screenshot for readable tiling at send time", async () => {
+    const close = vi.fn();
+    const bitmap = { width: 1920, height: 13_717, close } as unknown as ImageBitmap;
+    Object.defineProperty(globalThis, "createImageBitmap", { configurable: true, value: vi.fn().mockResolvedValue(bitmap) });
+    const createElement = vi.spyOn(document, "createElement");
+    const file = new File(["long-screenshot"], "page.png", { type: "image/png" });
+
+    const output = await resizeImage(file);
+
+    expect(output).toMatchObject({ blob: file, type: "image/png", name: "page.png", width: 1920, height: 13_717 });
+    expect(createElement).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledOnce();
+  });
+
   it("orients, resizes, encodes JPEG at quality .85, and renames its file", async () => {
     const close = vi.fn(); const bitmap = { width: 4000, height: 3000, close } as unknown as ImageBitmap;
     Object.defineProperty(globalThis, "createImageBitmap", { configurable: true, value: vi.fn().mockResolvedValue(bitmap) });

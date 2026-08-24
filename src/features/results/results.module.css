@@ -1,0 +1,165 @@
+.page {
+  min-height: 100vh;
+  overflow-x: clip;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: #f7f3ee;
+}
+
+.shell {
+  width: min(100%, 72rem);
+  min-width: 0;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 4vw, 3rem);
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e6ded6;
+  border-radius: clamp(1rem, 3vw, 2rem);
+  box-shadow: 0 1.5rem 4rem rgb(32 26 34 / 10%);
+}
+
+.summary,
+.cards,
+.card,
+.card details,
+.cardBody,
+.field {
+  min-width: 0;
+}
+
+.summary {
+  display: grid;
+  gap: 1rem;
+}
+
+.summary h1 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: clamp(2rem, 6vw, 4.25rem);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+}
+
+.cards {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.card {
+  max-width: 100%;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e6ded6;
+  border-radius: 1rem;
+}
+
+.card summary {
+  padding: 1.15rem;
+  overflow-wrap: anywhere;
+  font-weight: 750;
+  cursor: pointer;
+  background: #fff9f6;
+}
+
+.cardBody {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.field {
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  max-width: 100%;
+  padding: 1rem;
+  overflow: hidden;
+  background: #faf8f6;
+  border: 1px solid #ece5de;
+  border-radius: 0.85rem;
+}
+
+.field h2,
+.field h3,
+.field p,
+.field ul {
+  margin: 0;
+}
+
+.text,
+.field li {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.prompt {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+  background: #211b23;
+  color: #fff;
+  border-radius: 0.75rem;
+  font: 0.875rem/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.copyControl {
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.copyButton {
+  min-height: 2.5rem;
+  max-width: 100%;
+  padding: 0.6rem 0.9rem;
+  color: #fff;
+  overflow-wrap: anywhere;
+  background: #6f52d9;
+  border: 0;
+  border-radius: 0.65rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.copyButton:hover:not(:disabled) {
+  background: #5940bd;
+}
+
+.copyButton:disabled {
+  color: #6c6570;
+  cursor: not-allowed;
+  background: #e4dfe6;
+}
+
+.packageAction {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 42rem) {
+  .page {
+    padding: 0.75rem;
+  }
+
+  .shell {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .cardBody,
+  .summaryGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

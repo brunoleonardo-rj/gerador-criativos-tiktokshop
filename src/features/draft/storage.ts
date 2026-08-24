@@ -12,7 +12,7 @@ export type StoredImage = { id: string; role: ImageRole; blob: Blob; name: strin
 export type StoredResult = GenerationEnvelope & { id: string };
 
 const blobSchema = z.custom<Blob>((value) => value instanceof Blob || Boolean(value && typeof value === "object" && "size" in value && "type" in value), "Blob esperado");
-const imageSchema = z.object({ id: z.string().uuid(), role: z.enum(["ugc", "product", "ad"]), blob: blobSchema, name: z.string().min(1).max(500), type: z.enum(["image/jpeg", "image/png", "image/webp"]), width: z.number().int().positive().max(1568), height: z.number().int().positive().max(1568), size: z.number().int().nonnegative(), order: z.number().int().nonnegative().optional() }).strict();
+const imageSchema = z.object({ id: z.string().uuid(), role: z.enum(["ugc", "product", "ad"]), blob: blobSchema, name: z.string().min(1).max(500), type: z.enum(["image/jpeg", "image/png", "image/webp"]), width: z.number().int().positive().max(32_768), height: z.number().int().positive().max(32_768), size: z.number().int().nonnegative(), order: z.number().int().nonnegative().optional() }).strict();
 const storedImageSchema = imageSchema.extend({ blob: z.unknown() });
 const issueSchema = z.object({ code: z.string(), severity: z.enum(["warning", "block"]), field: z.string(), message: z.string() }).strict();
 const envelopeCreativeSchema = creativeSchema.extend({ veoPrompt: z.string().nullable(), actualCounts: z.object({ trecho1: z.number().int().nonnegative(), trecho2: z.number().int().nonnegative(), trecho3: z.number().int().nonnegative().nullable(), pov: z.number().int().nonnegative() }).strict(), issues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]) }).strict();

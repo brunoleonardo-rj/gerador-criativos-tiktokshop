@@ -1,7 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { MessageParam, TextBlockParam } from "@anthropic-ai/sdk/resources/messages";
-import { z } from "zod";
 import { failureForAnthropic, GenerationFailure } from "@/features/generation/anthropic-errors";
 import { productExtractionSchema, type ProductExtraction } from "./schema";
 
@@ -28,10 +28,7 @@ export class AnthropicProductExtractionAdapter implements ProductExtractionPort 
         system: request.system,
         messages: request.messages,
         output_config: {
-          format: {
-            type: "json_schema",
-            schema: z.toJSONSchema(productExtractionSchema, { target: "draft-07" }) as Record<string, unknown>,
-          },
+          format: zodOutputFormat(productExtractionSchema),
         },
       }, { signal });
 
