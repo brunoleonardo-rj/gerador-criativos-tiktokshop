@@ -29,8 +29,10 @@ describe("PrismaSettingsRepository", () => {
     const repository = new PrismaSettingsRepository(client);
     const encrypted: EncryptedSecret = { ciphertext: "ciphertext", iv: "iv", tag: "tag", version: 1 };
 
+    await client.appSettings.create({ data: { id: "singleton", veoTemplate: "{{copy_legada}}", geminiTemplate: "" } });
     const defaults = await repository.getOrCreate("{{copy_completa}}", "{{produto}}");
     expect(defaults.geminiTemplate).toBe("{{produto}}");
+    expect(defaults.veoTemplate).toBe("{{copy_legada}}");
     const saved = await repository.update({ encryptedApiKey: encrypted, apiKeyLastFour: "7890", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" });
     expect(saved.encryptedApiKey).toEqual(encrypted);
     await repository.deleteApiKey();

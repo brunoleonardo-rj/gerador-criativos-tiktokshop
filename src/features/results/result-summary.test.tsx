@@ -3,11 +3,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ResultSummary } from "./result-summary";
 import { generationInputFixture, creativeBatchFixture } from "../../../tests/fixtures/creative-result";
 import { validateCreativeBatch } from "@/features/generation/validation";
+import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
 
 describe("ResultSummary", () => {
   afterEach(() => cleanup());
   it("offers a copy control for every displayed summary field", () => {
-    const result = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{copy_completa}}", "2026-08-21T12:00:00.000Z");
+    const result = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{copy_completa}}", DEFAULT_GEMINI_TEMPLATE, "2026-08-21T12:00:00.000Z");
     render(<ResultSummary result={result} />);
 
     for (const name of [
@@ -17,7 +18,7 @@ describe("ResultSummary", () => {
   });
 
   it("shows status, safe date and explicit empty states", () => {
-    const result = validateCreativeBatch(generationInputFixture(), { ...creativeBatchFixture(), fatos: [], riscos: [], checklistPublicacao: [] }, "{{copy_completa}}", "2026-08-21T12:00:00.000Z");
+    const result = validateCreativeBatch(generationInputFixture(), { ...creativeBatchFixture(), fatos: [], riscos: [], checklistPublicacao: [] }, "{{copy_completa}}", DEFAULT_GEMINI_TEMPLATE, "2026-08-21T12:00:00.000Z");
     render(<ResultSummary result={result} />);
     expect(screen.getByText("Atenção")).toBeInTheDocument();
     expect(screen.getByText("Nenhum fato verificado.")).toBeInTheDocument();
