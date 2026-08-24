@@ -38,7 +38,7 @@ export function ProductStep({
   const analyzing = state === "analyzing";
   const reviewing = state === "review";
 
-  return <section className={styles.productStep} aria-labelledby="product-step-title" aria-busy={analyzing}>
+  return <section className={styles.productStep} aria-labelledby="product-step-title">
     <header className={styles.productHeader}>
       <p className={styles.eyebrow}>Etapa do produto</p>
       <h2 id="product-step-title">{reviewing ? "Revise os dados extraídos" : "Mostre o produto para a IA"}</h2>

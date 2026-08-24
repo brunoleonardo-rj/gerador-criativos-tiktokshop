@@ -81,6 +81,7 @@ describe("ProductStep", () => {
     render(<ProductStepFixture {...uploadProps} images={[productImage]} state="analyzing" onAnalyze={onAnalyze} onImagesChange={onImagesChange} />);
 
     expect(screen.getByRole("status")).toHaveTextContent(/lendo os dados do produto/i);
+    expect(screen.getByRole("status").closest('[aria-busy="true"]')).toBeNull();
     expect(screen.getByAltText("Prévia de product.jpg")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Analisando imagens…" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Remover product.jpg" })).toBeDisabled();

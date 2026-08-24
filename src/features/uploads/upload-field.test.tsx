@@ -91,4 +91,19 @@ describe("UploadField", () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(expect.arrayContaining([expect.objectContaining({ name: "externa.jpg" }), expect.objectContaining({ name: "processada.jpg" })])));
     expect(onChange.mock.lastCall?.[0].map((item: { name: string }) => item.name)).toEqual(["externa.jpg", "processada.jpg"]);
   });
+
+  it("discards an in-flight resize when the field becomes disabled", async () => {
+    const onChange = vi.fn();
+    let resolveResize!: (value: { blob: Blob; name: string; type: "image/jpeg"; width: number; height: number; size: number }) => void;
+    vi.mocked(resizeImage).mockImplementationOnce(() => new Promise((resolve) => { resolveResize = resolve; }));
+    const view = render(<UploadField role="product" min={1} max={3} items={[]} onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText(/fotos do produto/i), { target: { files: [new File(["x"], "processada.jpg", { type: "image/jpeg" })] } });
+    await waitFor(() => expect(resolveResize).toBeTypeOf("function"));
+    act(() => view.rerender(<UploadField role="product" min={1} max={3} items={[]} disabled onChange={onChange} />));
+    resolveResize({ blob: new Blob(["x"], { type: "image/jpeg" }), name: "processada.jpg", type: "image/jpeg", width: 1, height: 1, size: 1 });
+
+    await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

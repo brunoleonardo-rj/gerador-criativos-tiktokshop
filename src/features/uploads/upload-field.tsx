@@ -25,9 +25,13 @@ export function UploadField({ role, min, max, items, label = labels[role], help,
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(0);
   const currentItems = useRef(items);
+  const currentDisabled = useRef(disabled);
   const queue = useRef(Promise.resolve());
   // A layout effect only observes committed props and runs before promise continuations queued after commit.
-  useLayoutEffect(() => { currentItems.current = items; }, [items]);
+  useLayoutEffect(() => {
+    currentItems.current = items;
+    currentDisabled.current = disabled;
+  }, [disabled, items]);
   const previews = useMemo(() => {
     const next: Record<string, string> = {};
     for (const item of items) next[item.id] = URL.createObjectURL(item.blob);
@@ -36,6 +40,7 @@ export function UploadField({ role, min, max, items, label = labels[role], help,
   useEffect(() => () => Object.values(previews).forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
   function commit(next: StoredImage[]) {
+    if (currentDisabled.current) return;
     currentItems.current = next;
     onChange(next);
   }
