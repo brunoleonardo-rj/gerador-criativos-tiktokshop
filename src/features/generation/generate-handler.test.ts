@@ -16,6 +16,20 @@ const response = { creatives: [], batchIssues: [], status: "valid", produtoNorma
 const threeMiBJpeg = () => { const bytes = new Uint8Array(3 * 1024 * 1024); bytes.set([0xff, 0xd8, 0xff, 0xdb]); return bytes; };
 
 describe("makeGenerateHandler", () => {
+  it("permite até cinco minutos para a geração estruturada", async () => {
+    const signal = new AbortController().signal;
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(signal);
+    const generate = vi.fn().mockResolvedValue(response);
+    const handler = makeGenerateHandler({ service: { generate }, requireSession: async () => ({}), enforceSameOrigin: () => undefined });
+
+    try {
+      expect((await handler(await multipart(generationInputFixture(), []))).status).toBe(200);
+      expect(timeout).toHaveBeenCalledWith(300_000);
+      expect(generate).toHaveBeenCalledWith(expect.anything(), signal);
+    } finally {
+      timeout.mockRestore();
+    }
+  });
   it("ignores UGC while forwarding only product and ad images", async () => {
     const generate = vi.fn().mockResolvedValue(response);
     const handler = makeGenerateHandler({ service: { generate }, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });

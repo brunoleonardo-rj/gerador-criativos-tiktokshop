@@ -10,6 +10,7 @@ import {
 } from "../uploads/server-images";
 
 export const MAX_BODY_BYTES = 56 * 1024 * 1024;
+export const GENERATION_TIMEOUT_MS = 300_000;
 const imageSpecs = {
   product: { min: 0, max: 8 },
   ad: { min: 0, max: 5 },
@@ -49,7 +50,7 @@ export function makeGenerateHandler(deps: Dependencies) {
         images.push({ role: image.field, mediaType: image.mediaType, data: image.data });
       }
     }
-    const signal = AbortSignal.timeout(100_000);
+    const signal = AbortSignal.timeout(GENERATION_TIMEOUT_MS);
     try { return Response.json(await deps.service.generate({ input, images }, signal)); }
     catch (error) { return errorResponse(error instanceof GenerationFailure ? error.code : "UPSTREAM_UNAVAILABLE"); }
   };
