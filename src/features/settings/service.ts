@@ -32,8 +32,10 @@ INFLUENCER BEHAVIOR:
 - Starting pose: {{pose}}
 - No exaggerated acting or sales performance.
 
-INFLUENCER SPEECH (Portuguese only) — SHOULD BE THE SAME WORD BY WORD AS BELOW:
-"{{copy_completa}}"
+INFLUENCER SPEECH (Portuguese only) — SHOULD BE THE SAME WORD BY WORD AS BELOW, SPOKEN IN THIS ORDER:
+Trecho 1: "{{copy_trecho1}}"
+Trecho 2: "{{copy_trecho2}}"
+Full line for reference: "{{copy_completa}}"
 - Speech must sound spontaneous, with light pauses, natural rhythm, and a soft Brazilian Portuguese accent.
 - Tone is friendly, curious, and confident — never scripted or forced.
 - Do not add, remove, or reorder any word.
