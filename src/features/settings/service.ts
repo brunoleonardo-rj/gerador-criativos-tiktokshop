@@ -13,7 +13,7 @@ WARDROBE: {{figurino}}
 
 VISUAL REALISM:
 - Photorealistic skin with subtle texture, natural pores, soft highlights, and realistic shadows.
-- Natural hair movement with fine strand detail and believable physics.
+- Hair length, color, and style stay exactly as shown in the reference frame throughout the whole video — natural movement and physics are allowed, but never lengthen, shorten, thicken, or restyle it.
 - Accurate fabric behavior and product materials with correct reflections and weight.
 - Clean, sharp image with natural color, balanced contrast, and realistic depth of field.
 - No over-processing, no artificial cinematic effects.
@@ -51,6 +51,7 @@ PRODUCT INTERACTION:
 - If a phone is visible in her hand (matching the reference frame), its screen stays off or black for the entire video — never show an app, photo, thumbnail, or any interface on it.
 - If touched or held, hand pressure, grip, and movement must be realistic and proportional.
 - Hands must never cover the feature being named — they frame it, brush alongside it, or gesture toward it, always leaving the detail visible to camera.
+- Correct human anatomy at all times, in every frame: exactly two arms, two hands, five fingers per hand, one head — never an extra or missing limb, hand, finger, or body part, even briefly during fast motion or hand gestures.
 - No distortion, no scale changes, no visual artifacts.
 
 GENERAL GUIDELINES:
