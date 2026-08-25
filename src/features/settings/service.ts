@@ -12,6 +12,7 @@ CRITICAL FIDELITY — read this before anything else, violating any of these rui
 - The product's shape, color, material, and every visible feature (pockets, buttons, zippers, logos, texture) are pixel-identical to the reference frame in every single frame — no invented or missing details, ever.
 - Her skin is pixel-identical to the reference frame in every single frame — no invented tattoo, mark, scar, or piercing anywhere, at any point in the video. If a real tattoo or mark is visible in the reference frame, it only ever shows on exposed skin, properly hidden under clothing wherever fabric covers it — never visible on top of or through the fabric.
 - Her hair length, color, and style stay exactly as shown in the reference frame — natural movement only, never regrown, cut, or restyled.
+- Her clothing is pixel-identical to the reference frame too — plain fabric stays plain. Never print, embroider, or draw any graphic, pattern, necklace, charm, or decorative design onto the clothing that isn't already visible in the reference frame.
 - Exactly two arms, two hands, five fingers per hand, one head, at all times — never an extra or missing limb, hand, or finger.
 
 PRODUCT: {{produto}}
@@ -55,6 +56,7 @@ Timing rule: the hand gesture starts a fraction BEFORE the word and the camera m
 PRODUCT INTERACTION:
 - The product must stay pixel-consistent with the reference frame at all times. Never invent, add, or remove product features — no new pockets, buttons, zippers, seams, patterns, logos, or texture that isn't already visible in the reference frame.
 - Her skin must stay pixel-consistent with the reference frame too. Never invent, add, or remove tattoos, marks, scars, or piercings that aren't already visible in the reference frame; a real one only shows on exposed skin, never on top of or through clothing.
+- Her clothing stays plain and pixel-consistent with the reference frame too. Never print, embroider, or draw a graphic, pattern, necklace, charm, or decoration onto the fabric that isn't already there.
 - If a phone is visible in her hand (matching the reference frame), its screen stays off or black for the entire video — never show an app, photo, thumbnail, or any interface on it.
 - If touched or held, hand pressure, grip, and movement must be realistic and proportional.
 - Hands must never cover the feature being named — they frame it, brush alongside it, or gesture toward it, always leaving the detail visible to camera.
@@ -65,7 +67,9 @@ GENERAL GUIDELINES:
 - Let realism guide every decision.
 - Keep the video clean, modern, human, and believable.
 - Absolutely no on-screen text, captions, or subtitles of any kind, and no inserted image, logo, sticker, graphic, or animation composited over the footage — the video must be pure camera footage, nothing overlaid on top.
-- The result should feel like a real person recording a real moment — not an ad.`;
+- The result should feel like a real person recording a real moment — not an ad.
+
+LAST FRAME CHECK (verify before finishing): in the very last frame of the video, she is still holding the product in the exact same grip as the first frame, her clothing still has no printed graphic or decoration beyond the reference frame, and her skin still shows no invented tattoo or mark. The shot must never end with empty hands or a changed appearance.`;
 
 export type PublicSettings = {
   apiKeyConfigured: boolean;
