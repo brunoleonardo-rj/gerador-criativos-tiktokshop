@@ -99,6 +99,29 @@ describe("assetStorage", () => {
     expect(await assetStorage.getResult(result.id)).toEqual(expected);
   });
 
+  it("lists results created before the render-plan fields changed", async () => {
+    const result = { ...validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_trecho}}"), id: "30000000-0000-4000-8000-000000000000", createdAt: "2026-08-25T09:00:00.000Z" };
+    const { productProfile: _productProfile, ...withoutProductProfile } = result;
+    const legacy = {
+      ...withoutProductProfile,
+      creatives: result.creatives.map((creative) => ({
+        ...creative,
+        geminiSlots: { ...creative.geminiSlots, enquadramentoExtra: "Plano médio frontal" },
+      })),
+    };
+    const db = await openDB("creative-generator", 2);
+    await db.put("results", legacy);
+
+    const listed = await assetStorage.listResults();
+
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({
+      id: result.id,
+      productProfile: { formatoUso: "ambiente", zonaFoco: "objeto", detalheCritico: null },
+    });
+    expect(listed[0].creatives[0].geminiSlots).not.toHaveProperty("enquadramentoExtra");
+  });
+
   it("preserves selection order instead of sorting opaque UUIDs", async () => {
     const first = { ...image, id: "f0000000-0000-4000-8000-000000000000" };
     const second = { ...image, id: "10000000-0000-4000-8000-000000000000", name: "segundo.jpg" };

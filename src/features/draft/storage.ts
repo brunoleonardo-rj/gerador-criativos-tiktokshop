@@ -83,9 +83,17 @@ function migrateLegacyResult(raw: unknown): unknown {
   if (!raw || typeof raw !== "object" || !("creatives" in raw) || !Array.isArray((raw as { creatives: unknown }).creatives)) return raw;
   const value = raw as Record<string, unknown> & { creatives: unknown[] };
   const creatives = value.creatives.map((creative) => {
-    if (!creative || typeof creative !== "object" || "veoPrompts" in creative || !("veoPrompt" in creative)) return creative;
-    const { veoPrompt, ...rest } = creative as Record<string, unknown>;
-    return { ...rest, veoPrompts: { trecho1: typeof veoPrompt === "string" ? veoPrompt : null, trecho2: null, trecho3: null } };
+    if (!creative || typeof creative !== "object") return creative;
+    let migrated = creative as Record<string, unknown>;
+    if (!("veoPrompts" in migrated) && "veoPrompt" in migrated) {
+      const { veoPrompt, ...rest } = migrated;
+      migrated = { ...rest, veoPrompts: { trecho1: typeof veoPrompt === "string" ? veoPrompt : null, trecho2: null, trecho3: null } };
+    }
+    if (migrated.geminiSlots && typeof migrated.geminiSlots === "object" && "enquadramentoExtra" in migrated.geminiSlots) {
+      const { enquadramentoExtra: _enquadramentoExtra, ...geminiSlots } = migrated.geminiSlots as Record<string, unknown>;
+      migrated = { ...migrated, geminiSlots };
+    }
+    return migrated;
   });
   if (!("productProfile" in value)) value.productProfile = FALLBACK_PRODUCT_PROFILE;
   return { ...value, creatives };
