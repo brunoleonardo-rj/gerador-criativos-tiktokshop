@@ -11,6 +11,23 @@ export type ProductReviewFormProps = {
 
 type ReviewField = "nomeProduto" | "categoria" | "descricaoPdp" | "avaliacoes" | "notaMedia" | "quantidadeAvaliacoes" | "precoAtual" | "precoAnterior" | "especificacoesTexto" | "publicoAlvo";
 
+const FORMATO_USO_OPTIONS = [
+  { value: "vestido", label: "Vestido — roupa, calçado, acessório usado no corpo" },
+  { value: "manuseado", label: "Manuseado — segurado durante o uso (aparelho, utensílio)" },
+  { value: "aplicado_no_corpo", label: "Aplicado no corpo — cosmético, perfume" },
+  { value: "consumido", label: "Consumido — alimento, bebida, suplemento" },
+  { value: "ambiente", label: "Ambiente — objeto de casa, decoração" },
+] as const;
+
+const ZONA_FOCO_OPTIONS = [
+  { value: "cabeca", label: "Cabeça — cabelo, rosto, brinco, óculos" },
+  { value: "tronco", label: "Tronco — blusa, colete, colar, perfume" },
+  { value: "corpo_inteiro", label: "Corpo inteiro — conjunto, vestido, look completo" },
+  { value: "pernas_pes", label: "Pernas e pés — calça, legging, calçado" },
+  { value: "maos", label: "Mãos — esmalte, anel, creme de mão" },
+  { value: "objeto", label: "Objeto — não fica no corpo" },
+] as const;
+
 function validation(error: FieldErrors<WizardFormValues>[ReviewField], id: string) {
   if (!error?.message) return null;
   return <p id={id} className={styles.fieldError} role="alert">{error.message}</p>;
@@ -87,6 +104,29 @@ export function ProductReviewForm({ register, errors }: ProductReviewFormProps) 
           <label htmlFor="publicoAlvo">Público-alvo</label>
           <textarea id="publicoAlvo" rows={5} {...register("publicoAlvo")} {...fieldState("publicoAlvo")} placeholder="Preencha apenas quando houver indicação explícita" />
           {validation(errors.publicoAlvo, "publicoAlvo-error")}
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset className={styles.reviewGroup}>
+      <legend>Classificação do produto</legend>
+      <p>Decide automaticamente enquadramento, posição das mãos e quais blocos do prompt existem — confira se a classificação está certa.</p>
+      <div className={styles.fieldGrid}>
+        <div className={styles.field}>
+          <label htmlFor="formatoUso">Como o produto é usado</label>
+          <select id="formatoUso" {...register("formatoUso")}>
+            {FORMATO_USO_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
+        <div className={styles.field}>
+          <label htmlFor="zonaFoco">Onde o resultado aparece</label>
+          <select id="zonaFoco" {...register("zonaFoco")}>
+            {ZONA_FOCO_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
+        <div className={`${styles.field} ${styles.fullWidth}`}>
+          <label htmlFor="detalheCriticoTexto">Detalhe crítico (opcional)</label>
+          <input id="detalheCriticoTexto" {...register("detalheCriticoTexto")} placeholder="Ex.: alça sob o pé, cabeçote cilíndrico" />
         </div>
       </div>
     </fieldset>

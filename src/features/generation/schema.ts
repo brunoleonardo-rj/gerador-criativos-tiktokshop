@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { productProfileSchema } from "./render-plan-schema";
 
 const shortText = z.string().trim().min(1).max(500);
 const longText = z.string().trim().min(1).max(10_000);
@@ -12,7 +13,7 @@ export const copySegmentSchema = z.object({
 export const geminiSlotsSchema = z.object({
   identidadeUgc: longText,
   produto: shortText,
-  wardrobeLock: longText,
+  wardrobeLock: longText.nullable(),
   tecido: longText,
   evitar: longText,
   calcado: shortText,
@@ -20,7 +21,6 @@ export const geminiSlotsSchema = z.object({
   iluminacao: shortText,
   acao: longText,
   pose: shortText,
-  enquadramentoExtra: z.string().trim().max(500),
 }).strict();
 
 export const speechBeatSchema = z.object({
@@ -68,6 +68,7 @@ export const generationInputSchema = z.object({
   publicoAlvo: z.string().trim().max(2_000).optional(),
   perfilUgc: longText,
   linkProduto: z.string().url().max(2_000).optional(),
+  productProfile: productProfileSchema,
   quantidadeCriativos: z.number().int().min(1).max(8),
   ambientesPermitidos: z.array(shortText).max(20),
   politicaPreco: z.enum(["sem_preco", "teto_folgado", "preco_exato_com_aviso"]),
@@ -81,3 +82,4 @@ export const generationInputSchema = z.object({
 export type GenerationInput = z.infer<typeof generationInputSchema>;
 export type CreativeBatch = z.infer<typeof creativeBatchSchema>;
 export type SpeechBeat = z.infer<typeof speechBeatSchema>;
+export type GeminiSlots = z.infer<typeof geminiSlotsSchema>;

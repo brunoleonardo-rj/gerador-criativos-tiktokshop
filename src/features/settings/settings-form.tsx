@@ -50,12 +50,14 @@ const geminiPreviewValues: GeminiVariables = {
   wardrobe_lock: "Roupa casual neutra sem estampas.",
   tecido: "Malha lisa com caimento natural.",
   evitar: "Não adicionar logotipos ou acessórios.",
-  calcado: "Tênis neutro, não usar salto.",
   cenario: "cozinha iluminada",
   iluminacao: "luz natural lateral",
-  acao: "mostrar a garrafa sem cobrir o produto",
   pose: "em pé, postura relaxada",
+  maos: "uma das mãos segura o produto com pegada natural e firme; a outra fica relaxada ao lado do corpo ou apoia levemente",
+  enquadramento_crop: "plano médio, da cintura para cima",
   enquadramento_extra: "",
+  bloco_calcado: "",
+  bloco_interacao: "AÇÃO E INTERAÇÃO COM O PRODUTO:\nmostrar a garrafa sem cobrir o produto\n\n",
 };
 
 async function defaultSave(input: SettingsUpdate): Promise<PublicSettingsView> {
@@ -212,7 +214,7 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
         <h2>Prompt Gemini</h2>
         <label htmlFor="gemini-template">Template Gemini</label>
         <textarea id="gemini-template" name="geminiTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={12} value={geminiTemplate} onChange={(event) => setGeminiTemplate(event.target.value)} aria-invalid={!geminiTemplateValidation.valid} aria-describedby={`gemini-template-help${geminiTemplateValidation.valid ? "" : " gemini-template-error"}`} required />
-        <p id="gemini-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{identidade_ugc}}"}, {"{{produto}}"}, {"{{wardrobe_lock}}"}, {"{{tecido}}"}, {"{{evitar}}"}, {"{{calcado}}"}, {"{{cenario}}"}, {"{{iluminacao}}"}, {"{{acao}}"}, {"{{pose}}"} e {"{{enquadramento_extra}}"}.</p>
+        <p id="gemini-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{identidade_ugc}}"}, {"{{produto}}"}, {"{{wardrobe_lock}}"}, {"{{tecido}}"}, {"{{evitar}}"}, {"{{cenario}}"}, {"{{iluminacao}}"}, {"{{pose}}"}, {"{{maos}}"}, {"{{enquadramento_crop}}"}, {"{{enquadramento_extra}}"}, {"{{bloco_calcado}}"} e {"{{bloco_interacao}}"}. Enquadramento, mãos e blocos condicionais são derivados automaticamente do perfil do produto — não são gerados pelo modelo.</p>
         {!geminiTemplateValidation.valid && <p id="gemini-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {geminiTemplateValidation.unknown.join(", ")}.</p>}
         <h3>Prévia com dados fictícios</h3>
         <output className="whitespace-pre-wrap rounded-xl bg-[#fff6f3] p-4 text-sm leading-6 text-[#201a22]">{geminiPreview}</output>

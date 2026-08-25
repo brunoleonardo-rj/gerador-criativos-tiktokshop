@@ -1,12 +1,13 @@
 import { renderVeoTemplate } from "@/features/settings/veo-template";
-import { DEFAULT_GEMINI_TEMPLATE, renderGeminiTemplate } from "@/features/settings/gemini-template";
+import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
+import { buildGeminiPrompt, deriveRenderPlan, type ProductProfile } from "./render-plan";
 import { creativeBatchSchema, generationInputSchema, type CreativeBatch, type GenerationInput, type SpeechBeat } from "./schema";
 
 export type IssueSeverity = "warning" | "block";
 export type GenerationIssue = { code: string; severity: IssueSeverity; field: string; message: string };
 export type VeoPrompts = { trecho1: string | null; trecho2: string | null; trecho3: string | null };
 export type CreativeEnvelope = CreativeBatch["creatives"][number] & { promptGemini: string | null; veoPrompts: VeoPrompts; actualCounts: { trecho1: number; trecho2: number; trecho3: number | null; pov: number }; issues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked" };
-export type GenerationEnvelope = Omit<CreativeBatch, "creatives"> & { creatives: CreativeEnvelope[]; batchIssues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked"; settingsUpdatedAt: string | null };
+export type GenerationEnvelope = Omit<CreativeBatch, "creatives"> & { creatives: CreativeEnvelope[]; batchIssues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked"; settingsUpdatedAt: string | null; productProfile: ProductProfile };
 
 const AMOUNT = "(?:\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?|\\d+)";
 const MONEY = new RegExp(`(?:(?:US\\$|R\\$|\\$|€|£|¥)\\s*${AMOUNT}|${AMOUNT}\\s*(?:US\\$|R\\$|\\$|€|£|¥)|\\b(?:BRL|USD|EUR|GBP|JPY)\\s*${AMOUNT}\\b|\\b${AMOUNT}\\s*(?:BRL|USD|EUR|GBP|JPY)\\b|\\b${AMOUNT}\\s*(?:reais?|real|dólares?|dolares?|euros?|libras?|ienes?|centavos?)\\b|\\b(?:reais?|real|dólares?|dolares?|euros?|libras?|ienes?|centavos?)\\s*${AMOUNT}\\b)`, "iu");
@@ -26,23 +27,11 @@ export function renderSpeechBeats(beats: SpeechBeat[]): string {
 const add = (issues: GenerationIssue[], code: string, severity: IssueSeverity, field: string, message: string) => issues.push({ code, severity, field, message });
 const CONTINUATION_NOTE = "This segment continues directly from the final frame of the previous video segment — use that final frame as the primary visual reference for pose, lighting, and framing continuity, and cross-reference the original product reference photos to keep every product detail (color, cut, pockets, buttons, texture) exactly consistent with them. Do not let the product drift between segments.";
 const trechoKeys = ["trecho1", "trecho2", "trecho3"] as const;
-function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoNormalizado: string, veoTemplate: string, geminiTemplate: string): { promptGemini: string | null; veoPrompts: VeoPrompts; issues: GenerationIssue[] } {
+function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoNormalizado: string, veoTemplate: string, geminiTemplate: string, profile: ProductProfile): { promptGemini: string | null; veoPrompts: VeoPrompts; issues: GenerationIssue[] } {
   const issues: GenerationIssue[] = [];
   let promptGemini: string | null = null;
   try {
-    promptGemini = renderGeminiTemplate(geminiTemplate, {
-      identidade_ugc: creative.geminiSlots.identidadeUgc,
-      produto: creative.geminiSlots.produto,
-      wardrobe_lock: creative.geminiSlots.wardrobeLock,
-      tecido: creative.geminiSlots.tecido,
-      evitar: creative.geminiSlots.evitar,
-      calcado: creative.geminiSlots.calcado,
-      cenario: creative.geminiSlots.cenario,
-      iluminacao: creative.geminiSlots.iluminacao,
-      acao: creative.geminiSlots.acao,
-      pose: creative.geminiSlots.pose,
-      enquadramento_extra: creative.geminiSlots.enquadramentoExtra,
-    });
+    promptGemini = buildGeminiPrompt(geminiTemplate, creative.geminiSlots, profile, deriveRenderPlan(profile));
   } catch {
     add(issues, "GEMINI_TEMPLATE_INVALID", "block", "promptGemini", "O template Gemini possui variável inválida ou não resolvida.");
   }
@@ -63,7 +52,7 @@ function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoN
 }
 export function refreshPrompts(envelope: GenerationEnvelope, veoTemplate: string, geminiTemplate: string, settingsUpdatedAt: string | null): GenerationEnvelope {
   const creatives = envelope.creatives.map((creative) => {
-    const rendered = renderPromptsFor(creative, envelope.produtoNormalizado, veoTemplate, geminiTemplate);
+    const rendered = renderPromptsFor(creative, envelope.produtoNormalizado, veoTemplate, geminiTemplate, envelope.productProfile);
     const issues = [...creative.issues.filter((issue) => issue.code !== "GEMINI_TEMPLATE_INVALID" && issue.code !== "VEO_TEMPLATE_INVALID"), ...rendered.issues];
     const status: CreativeEnvelope["status"] = issues.some((issue) => issue.severity === "block") ? "blocked" : issues.length ? "needs_review" : "valid";
     return { ...creative, promptGemini: rendered.promptGemini, veoPrompts: rendered.veoPrompts, issues, status };
@@ -88,6 +77,41 @@ const hasAffirmativeVisualOverlay = (prompt: string): boolean => {
   }
   return false;
 };
+
+type GenericRule = { code: string; severity: IssueSeverity; fields: string[]; pattern?: RegExp; test?: (text: string) => boolean; message: string };
+const SEGURAR = /\b(segur\w*|empunh\w*|pegando|segurando)\b/iu;
+const GENERIC_RULES: GenericRule[] = [
+  { code: "MIRROR_IN_SCENE", severity: "block", fields: ["geminiSlots.cenario", "pose", "geminiSlots.acao"], pattern: /\b(espelho|espelhad[ao]|reflex[oõ]|superf[ií]cie reflexiva)\b/iu, message: "Espelho não é suportado: o reflexo não se mantém coerente no vídeo." },
+  { code: "ACTION_IS_SEQUENCE", severity: "warning", fields: ["geminiSlots.acao"], pattern: /\b(depois|em seguida|primeiro|ent[aã]o|alternando|logo ap[oó]s|na sequ[eê]ncia)\b/iu, message: "O frame-base é um instante único, não uma sequência." },
+  { code: "VIOLENT_TERM", severity: "block", fields: ["*"], pattern: /\b(decepad|amputad|mutilad|dilacerad)/iu, message: "Termo com conotação violenta aciona filtro de política do gerador." },
+  { code: "COERCIVE_CAPS", severity: "warning", fields: ["*"], test: (text) => /\b[A-ZÀ-Ú]{4,}(\s+[A-ZÀ-Ú]{4,}){2,}/.test(text), message: "Sequência longa em caixa alta pode ser lida como instrução adversarial." },
+];
+function applyGenericRules(issues: GenerationIssue[], creative: CreativeBatch["creatives"][number]) {
+  const fields: Record<string, string> = {
+    "geminiSlots.cenario": creative.geminiSlots.cenario,
+    "geminiSlots.acao": creative.geminiSlots.acao,
+    pose: creative.pose,
+    "geminiSlots.iluminacao": creative.geminiSlots.iluminacao,
+    "geminiSlots.evitar": creative.geminiSlots.evitar,
+    "geminiSlots.produto": creative.geminiSlots.produto,
+    "geminiSlots.tecido": creative.geminiSlots.tecido,
+    "geminiSlots.wardrobeLock": creative.geminiSlots.wardrobeLock ?? "",
+    descricao: creative.descricao,
+    "pov.texto": creative.pov.texto,
+  };
+  for (const rule of GENERIC_RULES) {
+    const targets = rule.fields.includes("*") ? Object.entries(fields) : rule.fields.map((field) => [field, fields[field]] as const);
+    for (const [field, value] of targets) {
+      if (value === undefined) continue;
+      const matched = rule.pattern ? rule.pattern.test(value) : rule.test ? rule.test(value) : false;
+      if (matched) add(issues, rule.code, rule.severity, field, rule.message);
+    }
+  }
+}
+function extractBrandCandidates(nomeProduto: string): string[] {
+  const stopwords = new Set(["de", "da", "do", "com", "para", "sem"]);
+  return nomeProduto.split(/\s+/u).map((word) => word.replace(/[.,;:!?()]/gu, "")).filter((word) => word.length >= 3 && /^[A-ZÀ-Ú][a-zà-ú]+$/u.test(word) && !stopwords.has(normalizeKey(word)));
+}
 
 export function validateCreativeBatch(input: GenerationInput, batch: CreativeBatch, veoTemplate: string, geminiTemplate = DEFAULT_GEMINI_TEMPLATE, settingsUpdatedAt: string | null = null): GenerationEnvelope {
   const safeInput = generationInputSchema.parse(input);
@@ -115,11 +139,21 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     const slotsToValidate = [
       ["geminiSlots.cenario", creative.geminiSlots.cenario],
       ["geminiSlots.acao", creative.geminiSlots.acao],
-      ["geminiSlots.wardrobeLock", creative.geminiSlots.wardrobeLock],
+      ["geminiSlots.wardrobeLock", creative.geminiSlots.wardrobeLock ?? ""],
     ] as const;
     for (const [field, value] of slotsToValidate) {
       if (/\b(?:remova|tire)\b[\s\S]{0,60}\broupa\b|\bsubstitua\s+a\s+roupa\b/iu.test(value)) add(issues, "CLOTHING_REMOVAL", "block", field, "O Prompt Gemini não pode instruir remoção ou troca de roupa.");
       if (hasAffirmativeVisualOverlay(value)) add(issues, "VISUAL_OVERLAY_FORBIDDEN", "block", field, "O Prompt Gemini não pode instruir overlays ou gráficos visuais.");
+    }
+    applyGenericRules(issues, creative);
+    const plan = deriveRenderPlan(safeInput.productProfile);
+    if (plan.maos.includes("sem segurar nada") && SEGURAR.test(creative.geminiSlots.acao)) {
+      add(issues, "HANDS_CONTRADICTION", "block", "geminiSlots.acao", "A ação exige segurar o produto, mas o productProfile está classificado como 'vestido'.");
+    }
+    for (const brand of extractBrandCandidates(safeInput.nomeProduto)) {
+      if (normalizeKey(creative.geminiSlots.produto).includes(normalizeKey(brand))) {
+        add(issues, "BRAND_NAME_IN_PROMPT", "warning", "geminiSlots.produto", `O nome da marca "${brand}" não deve aparecer na descrição visual do produto.`);
+      }
     }
     const spokenText = segments.filter((segment): segment is NonNullable<typeof segment> => segment !== null).map((segment) => segment.texto).join(" ");
     const normalizedSpokenText = normalizeKey(spokenText);
@@ -146,7 +180,7 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     if (creative.descartavel && !creative.motivoDescartavel) add(issues, "DISCARD_REASON_MISSING", "block", "motivoDescartavel", "O criativo foi marcado como descartável sem justificativa.");
     if (!creative.descartavel && creative.motivoDescartavel) add(issues, "DISCARD_REASON_UNEXPECTED", "warning", "motivoDescartavel", "Uma justificativa de descarte foi ignorada porque o criativo não foi marcado como descartável.");
     if (creative.descartavel && creative.motivoDescartavel) add(issues, "CREATIVE_DISCARDED", "warning", "motivoDescartavel", `Criativo marcado como descartável: ${creative.motivoDescartavel}`);
-    const rendered = renderPromptsFor(creative, safeBatch.produtoNormalizado, veoTemplate, geminiTemplate);
+    const rendered = renderPromptsFor(creative, safeBatch.produtoNormalizado, veoTemplate, geminiTemplate, safeInput.productProfile);
     const promptGemini = rendered.promptGemini;
     const veoPrompts = rendered.veoPrompts;
     issues.push(...rendered.issues);
@@ -155,5 +189,5 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     return { ...creative, motivoDescartavel: creative.descartavel ? creative.motivoDescartavel : null, promptGemini, veoPrompts, actualCounts, issues, status };
   });
   const status = batchIssues.some((issue) => issue.severity === "block") || creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
-  return { ...safeBatch, creatives, batchIssues, status, settingsUpdatedAt };
+  return { ...safeBatch, creatives, batchIssues, status, settingsUpdatedAt, productProfile: safeInput.productProfile };
 }

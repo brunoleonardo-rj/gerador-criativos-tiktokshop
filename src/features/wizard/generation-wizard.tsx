@@ -7,6 +7,8 @@ import { z } from "zod";
 import { assetStorage, draftStorage, type ImageRole, type StoredImage } from "@/features/draft/storage";
 import type { Draft } from "@/features/draft/schema";
 import { generationInputSchema, type GenerationInput } from "@/features/generation/schema";
+import { formatoUsoSchema, zonaFocoSchema } from "@/features/generation/render-plan-schema";
+import type { FormatoUso, ZonaFoco } from "@/features/generation/render-plan";
 import type { GenerationEnvelope } from "@/features/generation/validation";
 import { getProductSourceImages, imageSelectionKey } from "@/features/product-extraction/image-selection";
 import { productExtractionSchema, type ProductExtraction } from "@/features/product-extraction/schema";
@@ -37,6 +39,9 @@ export type WizardFormValues = {
   maxPalavrasPov: string;
   quantidadeHashtags: string;
   tomVoz: string;
+  formatoUso: FormatoUso;
+  zonaFoco: ZonaFoco;
+  detalheCriticoTexto: string;
 };
 
 export type ProductAnalysisDraft = {
@@ -66,6 +71,9 @@ const formSchema = z.object({
   maxPalavrasPov: z.string(),
   quantidadeHashtags: z.string(),
   tomVoz: text,
+  formatoUso: formatoUsoSchema,
+  zonaFoco: zonaFocoSchema,
+  detalheCriticoTexto: z.string(),
 }).superRefine((values, context) => {
   const bounded = (
     field: "notaMedia" | "quantidadeAvaliacoes" | "quantidadeCriativos" | "maxPalavrasPov" | "quantidadeHashtags",
@@ -109,6 +117,9 @@ const defaultValues: WizardFormValues = {
   maxPalavrasPov: "11",
   quantidadeHashtags: "5",
   tomVoz: "natural",
+  formatoUso: "manuseado",
+  zonaFoco: "objeto",
+  detalheCriticoTexto: "",
 };
 
 function optional(value: string): string | undefined {
@@ -143,6 +154,7 @@ function toInput(values: WizardFormValues): GenerationInput {
     maxPalavrasPov: Number(values.maxPalavrasPov),
     quantidadeHashtags: Number(values.quantidadeHashtags),
     tomVoz: values.tomVoz,
+    productProfile: { formatoUso: values.formatoUso, zonaFoco: values.zonaFoco, detalheCritico: optional(values.detalheCriticoTexto) ?? null },
   });
 }
 
@@ -170,6 +182,9 @@ export function fromDraft(draft: Draft): WizardFormValues {
     duracaoTotal: source.duracaoTotal === 15 || source.duracaoTotal === 30 ? source.duracaoTotal.toString() as "15" | "30" : "20",
     especificacoesTexto: Array.isArray(source.especificacoesCriticas) ? source.especificacoesCriticas.filter((item): item is string => typeof item === "string").join("\n") : "",
     ambientesTexto: Array.isArray(source.ambientesPermitidos) ? source.ambientesPermitidos.filter((item): item is string => typeof item === "string").join("\n") : defaultValues.ambientesTexto,
+    formatoUso: formatoUsoSchema.safeParse((source.productProfile as Record<string, unknown> | undefined)?.formatoUso).data ?? defaultValues.formatoUso,
+    zonaFoco: zonaFocoSchema.safeParse((source.productProfile as Record<string, unknown> | undefined)?.zonaFoco).data ?? defaultValues.zonaFoco,
+    detalheCriticoTexto: typeof (source.productProfile as Record<string, unknown> | undefined)?.detalheCritico === "string" ? (source.productProfile as { detalheCritico: string }).detalheCritico : "",
   };
 }
 
@@ -203,6 +218,7 @@ export function toDraft(values: WizardFormValues, analysis: ProductAnalysisDraft
     maxPalavrasPov: finite(values.maxPalavrasPov, 1, 30, true),
     quantidadeHashtags: finite(values.quantidadeHashtags, 1, 20, true),
     tomVoz: optional(values.tomVoz),
+    productProfile: { formatoUso: values.formatoUso, zonaFoco: values.zonaFoco, detalheCritico: optional(values.detalheCriticoTexto) ?? null },
     ...analysis,
   };
 }
@@ -294,6 +310,9 @@ function extractionValues(current: WizardFormValues, extraction: ProductExtracti
     precoAnterior: extraction.precoAnterior ?? "",
     especificacoesTexto: extraction.especificacoesCriticas.join("\n"),
     publicoAlvo: extraction.publicoAlvo ?? "",
+    formatoUso: extraction.formatoUso ?? defaultValues.formatoUso,
+    zonaFoco: extraction.zonaFoco ?? defaultValues.zonaFoco,
+    detalheCriticoTexto: extraction.detalheCritico ?? "",
   };
 }
 

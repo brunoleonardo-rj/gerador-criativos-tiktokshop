@@ -38,6 +38,9 @@ const defaults: WizardFormValues = {
   maxPalavrasPov: "11",
   quantidadeHashtags: "5",
   tomVoz: "natural",
+  formatoUso: "manuseado",
+  zonaFoco: "maos",
+  detalheCriticoTexto: "",
 };
 
 type TestProps = Omit<ProductStepProps, "register" | "errors">;

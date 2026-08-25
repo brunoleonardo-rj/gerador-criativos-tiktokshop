@@ -4,12 +4,14 @@ export const GEMINI_VARIABLES = [
   "wardrobe_lock",
   "tecido",
   "evitar",
-  "calcado",
   "cenario",
   "iluminacao",
-  "acao",
   "pose",
+  "maos",
+  "enquadramento_crop",
   "enquadramento_extra",
+  "bloco_calcado",
+  "bloco_interacao",
 ] as const;
 
 export type GeminiVariables = Record<(typeof GEMINI_VARIABLES)[number], string>;
@@ -42,39 +44,42 @@ export function renderGeminiTemplate(template: string, values: GeminiVariables):
 }
 
 export const DEFAULT_GEMINI_TEMPLATE = `Fotografia realista estilo UGC de smartphone, still fotográfico único, proporção vertical 9:16.
-Frame-base para vídeo gerado no VEO 3 — precisa parecer uma foto real, não arte de e-commerce.
+Frame-base para vídeo gerado no VEO 3 — precisa parecer uma foto real, não arte de e-commerce. Imagem única, sem painéis múltiplos ou colagem.
 
-ORDEM DAS REFERÊNCIAS: as primeiras imagens anexadas são a MODELO (identity lock). As imagens seguintes são a PEÇA EXATA a ser vestida (wardrobe lock) — meça o corte e a textura por essas fotos, não pela descrição escrita.
+ORDEM DAS REFERÊNCIAS: as primeiras imagens anexadas são a MODELO (identity lock). As imagens seguintes são a PEÇA EXATA a ser vestida, quando o produto for vestuário — meça o corte e a textura por essas fotos, não pela descrição escrita.
 
 IDENTITY LOCK:
 {{identidade_ugc}}
-Não altere feições, maquiagem natural leve nem estrutura corporal. A pele deve ser 100% fiel às fotos de referência: NÃO adicione tatuagem, sinal, cicatriz, piercing, mancha ou qualquer marca que não esteja clara e visivelmente presente nas fotos — na dúvida, não desenhe nada, pele limpa é o padrão. Quando uma tatuagem ou marca realmente existir nas fotos de referência, reproduza-a apenas sobre pele exposta, na posição exata mostrada — a roupa cobre a pele normalmente por cima dela, nunca deixe a marca aparecer sobre o tecido ou "vazando" através da roupa. Anatomia correta e real: exatamente dois braços, duas mãos, cinco dedos por mão, uma cabeça — nunca um braço, mão, dedo ou membro extra ou faltando, mesmo parcialmente visível na borda do quadro. IGNORE o calçado das fotos de identidade — o calçado é definido apenas pela seção CALÇADO abaixo.
+Não altere feições, maquiagem natural leve nem estrutura corporal. Boca fechada com sorriso leve — o frame será animado para fala depois, não precisa estar falando aqui. A pele deve ser 100% fiel às fotos de referência: NÃO adicione tatuagem, sinal, cicatriz, piercing, mancha ou qualquer marca que não esteja clara e visivelmente presente nas fotos — na dúvida, não desenhe nada, pele limpa é o padrão. Quando uma tatuagem ou marca realmente existir nas fotos de referência, reproduza-a apenas sobre pele exposta, na posição exata mostrada — a roupa cobre a pele normalmente por cima dela, nunca deixe a marca aparecer sobre o tecido ou "vazando" através da roupa. Anatomia correta e real: exatamente dois braços, duas mãos, cinco dedos por mão, uma cabeça — nunca um braço, mão, dedo ou membro extra ou faltando, mesmo parcialmente visível na borda do quadro.
 
 PRODUTO: {{produto}}
 
-WARDROBE LOCK — TRANSFERÊNCIA FIEL DE PEÇA REAL, NÃO INTERPRETAÇÃO GENÉRICA:
-As imagens do produto são a referência ABSOLUTA de modelagem. Não crie uma versão genérica da peça — copie exatamente o que está nas fotos.
+FIGURINO:
 {{wardrobe_lock}}
+Quando o figurino for a própria peça vendida, as imagens do produto são a referência ABSOLUTA de modelagem — copie exatamente o corte, a textura e as proporções, nunca uma versão genérica.
 
 TECIDO:
 {{tecido}}
 
 EVITE: {{evitar}}
 
-CALÇADO: {{calcado}}
-
-CENÁRIO: {{cenario}} Sem elementos de marca visíveis, sem letreiros ou logotipos legíveis.
+{{bloco_calcado}}CENÁRIO: {{cenario}}
 
 ILUMINAÇÃO: {{iluminacao}}
 
-AÇÃO: {{acao}}
+{{bloco_interacao}}POSE: {{pose}}
 
-POSE: {{pose}}
-
-ENQUADRAMENTO: independente do restante desta seção, no máximo UM espelho aparece na cena, sempre — mesmo que o CENÁRIO descreva penteadeira, espelho de corpo inteiro ou qualquer outro móvel com espelho, trate tudo como o mesmo espelho único; NUNCA um espelho refletindo outro espelho, nunca reflexos duplicados ou recursivos. Por padrão, da cintura para cima, pés fora de quadro, mãos livres e relaxadas sem segurar nada, câmera fixa em tripé físico fora de quadro na altura do peito, leve ângulo de baixo para cima, foco nítido no rosto e na peça, e NÃO é selfie de espelho — nenhum tripé, câmera externa ou equipamento de gravação aparece refletido em nenhuma superfície da cena. EXCEÇÃO 1 — ESPELHO: se o CENÁRIO, AÇÃO ou POSE acima descreverem um espelho, é selfie de espelho tirada com o próprio smartphone: NÃO existe tripé nem câmera externa na cena, refletidos ou não — o único aparelho é o smartphone na mão dela, com o aparelho e o reflexo visíveis, mas a TELA do aparelho apagada ou preta — nunca mostre app aberto, fotos, miniaturas de produto, texto ou qualquer interface na tela do celular. O reflexo no espelho precisa ser fisicamente idêntico à pessoa real, só invertido: mesma roupa, mesmo cabelo, mesmo produto na mesma mão, mesma pose espelhada — nunca um reflexo com roupa, pose ou aparência diferente da pessoa real. EXCEÇÃO 2 — abaixo, se houver, tem prioridade sobre o padrão acima: {{enquadramento_extra}}
+ENQUADRAMENTO: {{enquadramento_crop}}. {{maos}}. Câmera fixa, altura do peito, leve ângulo de baixo para cima, foco nítido no rosto e na peça. {{enquadramento_extra}}
 
 ÁUDIO: sem áudio. Esta é uma imagem estática.
 
 ESTILO: fotografia natural, iluminação realista, sem efeito de estúdio, textura de pele real com poros e brilho natural, cores fiéis sem filtro saturado, estética autêntica de UGC de TikTok Shop.
 
-RESTRIÇÕES: sem sobreposições visuais, sem texto na tela, sem elementos gráficos, sem marca d'água. Nenhuma tela de dispositivo (celular, tablet, monitor) pode exibir app, fotos, miniaturas de produto ou qualquer interface — telas aparecem apagadas ou pretas. Pele sem tatuagem, sinal, cicatriz, piercing ou qualquer marca que as fotos de referência não mostrem claramente; quando existir de verdade, aparece só na pele exposta, nunca sobre a roupa. Não remover, trocar ou substituir peças de roupa. Não alterar proporções corporais. Peça sem amassados, rugas ou vincos, salvo indicação em contrário no bloco TECIDO.`;
+RESTRIÇÕES UNIVERSAIS (aplicam sempre, sem exceção):
+- Nenhum espelho, superfície espelhada ou reflexiva relevante na cena.
+- Nenhum tripé, câmera, equipamento de gravação ou smartphone visível na cena, refletido ou não.
+- Não é selfie e não é foto de espelho.
+- Nenhuma tela de dispositivo exibindo app, fotos, miniaturas ou qualquer interface — telas aparecem apagadas ou pretas.
+- Sem sobreposições visuais, sem texto na imagem, sem elementos gráficos, sem marca d'água.
+- Nenhum logotipo ou nome de marca legível em nenhuma superfície.
+- Não remover, trocar ou substituir peças de roupa. Não alterar proporções corporais. Peça sem amassados, rugas ou vincos, salvo indicação em contrário no bloco TECIDO.`;

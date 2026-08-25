@@ -2,6 +2,7 @@ import { openDB, type DBSchema } from "idb";
 import { z } from "zod";
 import type { GenerationEnvelope } from "@/features/generation/validation";
 import { creativeBatchSchema, creativeSchema } from "@/features/generation/schema";
+import { productProfileSchema } from "@/features/generation/render-plan-schema";
 import { draftSchema, type Draft } from "./schema";
 
 export const DRAFT_STORAGE_KEY = "creative-generator:draft:v1";
@@ -17,7 +18,8 @@ const storedImageSchema = imageSchema.extend({ blob: z.unknown() });
 const issueSchema = z.object({ code: z.string(), severity: z.enum(["warning", "block"]), field: z.string(), message: z.string() }).strict();
 const veoPromptsSchema = z.object({ trecho1: z.string().nullable(), trecho2: z.string().nullable(), trecho3: z.string().nullable() }).strict();
 const envelopeCreativeSchema = creativeSchema.extend({ promptGemini: z.string().nullable(), veoPrompts: veoPromptsSchema, actualCounts: z.object({ trecho1: z.number().int().nonnegative(), trecho2: z.number().int().nonnegative(), trecho3: z.number().int().nonnegative().nullable(), pov: z.number().int().nonnegative() }).strict(), issues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]) }).strict();
-const resultSchema = creativeBatchSchema.omit({ creatives: true }).extend({ id: z.string().uuid(), creatives: z.array(envelopeCreativeSchema).min(1).max(8), batchIssues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]), settingsUpdatedAt: z.string().datetime().nullable(), createdAt: z.string().datetime().optional() }).strict();
+const resultSchema = creativeBatchSchema.omit({ creatives: true }).extend({ id: z.string().uuid(), creatives: z.array(envelopeCreativeSchema).min(1).max(8), batchIssues: z.array(issueSchema), status: z.enum(["valid", "needs_review", "blocked"]), settingsUpdatedAt: z.string().datetime().nullable(), createdAt: z.string().datetime().optional(), productProfile: productProfileSchema }).strict();
+const FALLBACK_PRODUCT_PROFILE = { formatoUso: "ambiente", zonaFoco: "objeto", detalheCritico: null } as const;
 
 interface CreativeDatabase extends DBSchema {
   images: { key: string; value: StoredImage };
@@ -85,6 +87,7 @@ function migrateLegacyResult(raw: unknown): unknown {
     const { veoPrompt, ...rest } = creative as Record<string, unknown>;
     return { ...rest, veoPrompts: { trecho1: typeof veoPrompt === "string" ? veoPrompt : null, trecho2: null, trecho3: null } };
   });
+  if (!("productProfile" in value)) value.productProfile = FALLBACK_PRODUCT_PROFILE;
   return { ...value, creatives };
 }
 export const assetStorage = {

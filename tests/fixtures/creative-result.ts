@@ -14,6 +14,7 @@ export function generationInputFixture(overrides: Record<string, unknown> = {}):
     maxPalavrasPov: 11,
     quantidadeHashtags: 5,
     tomVoz: "natural",
+    productProfile: { formatoUso: "manuseado", zonaFoco: "maos", detalheCritico: null },
     ...overrides,
   } as GenerationInput;
 }
@@ -38,7 +39,6 @@ export function creativeBatchFixture(overrides: Record<string, unknown> = {}): C
       iluminacao: "Luz natural lateral.",
       acao: "A personagem mostra a garrafa sem cobrir o produto.",
       pose: "Em pé, postura relaxada.",
-      enquadramentoExtra: "",
     },
     speechBeats: [{ triggerWord: "água", cameraMove: "quick push-in", gesture: "gesture beside the bottle", visibleResult: "the bottle remains fully visible" }],
     copy: {

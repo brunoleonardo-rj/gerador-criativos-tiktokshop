@@ -72,7 +72,7 @@ async function analyze(user: ReturnType<typeof userEvent.setup>) {
 
 describe("GenerationWizard", () => {
   it("keeps optional partial draft fields when a required field is empty", () => {
-    const values: WizardFormValues = { nomeProduto: "", categoria: "Casa", descricaoPdp: "", avaliacoes: "Ótimas", notaMedia: "4.5", quantidadeAvaliacoes: "12", precoAtual: "R$ 20", precoAnterior: "R$ 30", especificacoesTexto: "Aço\n500 ml", publicoAlvo: "Adultos", perfilUgc: "", linkProduto: "https://example.com/p", quantidadeCriativos: "7", ambientesTexto: "cozinha\nquarto", politicaPreco: "teto_folgado", duracaoTotal: "30", povComEmoji: false, maxPalavrasPov: "9", quantidadeHashtags: "4", tomVoz: "direto" };
+    const values: WizardFormValues = { nomeProduto: "", categoria: "Casa", descricaoPdp: "", avaliacoes: "Ótimas", notaMedia: "4.5", quantidadeAvaliacoes: "12", precoAtual: "R$ 20", precoAnterior: "R$ 30", especificacoesTexto: "Aço\n500 ml", publicoAlvo: "Adultos", perfilUgc: "", linkProduto: "https://example.com/p", quantidadeCriativos: "7", ambientesTexto: "cozinha\nquarto", politicaPreco: "teto_folgado", duracaoTotal: "30", povComEmoji: false, maxPalavrasPov: "9", quantidadeHashtags: "4", tomVoz: "direto", formatoUso: "manuseado", zonaFoco: "maos", detalheCriticoTexto: "" };
     const draft = toDraft(values);
     expect(draft).toMatchObject({ avaliacoes: "Ótimas", notaMedia: 4.5, quantidadeAvaliacoes: 12, precoAtual: "R$ 20", precoAnterior: "R$ 30", especificacoesCriticas: ["Aço", "500 ml"], publicoAlvo: "Adultos", linkProduto: "https://example.com/p", quantidadeCriativos: 7, ambientesPermitidos: ["cozinha", "quarto"], duracaoTotal: 30 });
     expect(fromDraft(draft)).toMatchObject({ ...values, nomeProduto: "", descricaoPdp: "", perfilUgc: "" });

@@ -7,12 +7,14 @@ const values: GeminiVariables = {
   wardrobe_lock: "Macacão azul de alças largas e cintura marcada.",
   tecido: "Tecido liso com caimento leve.",
   evitar: "Não criar bolsos ou estampas.",
-  calcado: "Sandália neutra, não usar tênis.",
   cenario: "Sala clara e residencial.",
   iluminacao: "Luz natural lateral.",
-  acao: "A personagem mostra o caimento.",
   pose: "Corpo inteiro, postura relaxada.",
+  maos: "mãos livres e relaxadas ao lado do corpo, sem segurar nada",
+  enquadramento_crop: "corpo inteiro, da cabeça aos pés",
   enquadramento_extra: "Pés totalmente visíveis.",
+  bloco_calcado: "CALÇADO: Sandália neutra, não usar tênis.\n\n",
+  bloco_interacao: "AÇÃO:\nA personagem mostra o caimento.\n\n",
 };
 
 describe("Gemini template", () => {
