@@ -40,4 +40,32 @@ describe("request guards", () => {
 
     expect(() => enforceSameOrigin(request)).not.toThrow();
   });
+
+  it("aceita a origem HTTPS encaminhada por um proxy confiável", () => {
+    const request = new Request("http://127.0.0.1:3000/api/test", {
+      method: "POST",
+      headers: {
+        host: "studio.example.com",
+        origin: "https://studio.example.com",
+        "x-forwarded-proto": "https",
+        "x-trusted-proxy-secret": "p".repeat(32),
+      },
+    });
+
+    expect(() => enforceSameOrigin(request)).not.toThrow();
+  });
+
+  it("ignora cabeçalhos encaminhados quando a prova do proxy é inválida", () => {
+    const request = new Request("http://127.0.0.1:3000/api/test", {
+      method: "POST",
+      headers: {
+        host: "studio.example.com",
+        origin: "https://studio.example.com",
+        "x-forwarded-proto": "https",
+        "x-trusted-proxy-secret": "invalida",
+      },
+    });
+
+    expect(() => enforceSameOrigin(request)).toThrow(/origem/i);
+  });
 });
