@@ -48,7 +48,7 @@ ORDEM DAS REFERÊNCIAS: as primeiras imagens anexadas são a MODELO (identity lo
 
 IDENTITY LOCK:
 {{identidade_ugc}}
-Não altere feições, maquiagem natural leve nem estrutura corporal. A pele deve ser 100% fiel às fotos de referência: NÃO adicione tatuagem, sinal, cicatriz, piercing, mancha ou qualquer marca que não esteja clara e visivelmente presente nas fotos — na dúvida, não desenhe nada, pele limpa é o padrão. IGNORE o calçado das fotos de identidade — o calçado é definido apenas pela seção CALÇADO abaixo.
+Não altere feições, maquiagem natural leve nem estrutura corporal. A pele deve ser 100% fiel às fotos de referência: NÃO adicione tatuagem, sinal, cicatriz, piercing, mancha ou qualquer marca que não esteja clara e visivelmente presente nas fotos — na dúvida, não desenhe nada, pele limpa é o padrão. Quando uma tatuagem ou marca realmente existir nas fotos de referência, reproduza-a apenas sobre pele exposta, na posição exata mostrada — a roupa cobre a pele normalmente por cima dela, nunca deixe a marca aparecer sobre o tecido ou "vazando" através da roupa. IGNORE o calçado das fotos de identidade — o calçado é definido apenas pela seção CALÇADO abaixo.
 
 PRODUTO: {{produto}}
 
@@ -77,4 +77,4 @@ ENQUADRAMENTO: por padrão, da cintura para cima, pés fora de quadro, mãos liv
 
 ESTILO: fotografia natural, iluminação realista, sem efeito de estúdio, textura de pele real com poros e brilho natural, cores fiéis sem filtro saturado, estética autêntica de UGC de TikTok Shop.
 
-RESTRIÇÕES: sem sobreposições visuais, sem texto na tela, sem elementos gráficos, sem marca d'água. Nenhuma tela de dispositivo (celular, tablet, monitor) pode exibir app, fotos, miniaturas de produto ou qualquer interface — telas aparecem apagadas ou pretas. Pele sem tatuagem, sinal, cicatriz, piercing ou qualquer marca que as fotos de referência não mostrem claramente. Não remover, trocar ou substituir peças de roupa. Não alterar proporções corporais. Peça sem amassados, rugas ou vincos, salvo indicação em contrário no bloco TECIDO.`;
+RESTRIÇÕES: sem sobreposições visuais, sem texto na tela, sem elementos gráficos, sem marca d'água. Nenhuma tela de dispositivo (celular, tablet, monitor) pode exibir app, fotos, miniaturas de produto ou qualquer interface — telas aparecem apagadas ou pretas. Pele sem tatuagem, sinal, cicatriz, piercing ou qualquer marca que as fotos de referência não mostrem claramente; quando existir de verdade, aparece só na pele exposta, nunca sobre a roupa. Não remover, trocar ou substituir peças de roupa. Não alterar proporções corporais. Peça sem amassados, rugas ou vincos, salvo indicação em contrário no bloco TECIDO.`;

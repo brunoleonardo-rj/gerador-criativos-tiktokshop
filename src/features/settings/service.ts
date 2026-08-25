@@ -10,7 +10,7 @@ Preserve the identity, product, environment, lighting direction, and overall com
 CRITICAL FIDELITY — read this before anything else, violating any of these ruins the shot:
 - The product stays continuously visible in her hand for the entire video, from the first frame to the last. It never disappears, teleports, or reappears out of nowhere — if her hand or arm moves, the product moves with it, always in the same grip, always on screen.
 - The product's shape, color, material, and every visible feature (pockets, buttons, zippers, logos, texture) are pixel-identical to the reference frame in every single frame — no invented or missing details, ever.
-- Her skin is pixel-identical to the reference frame in every single frame — no invented tattoo, mark, scar, or piercing anywhere, at any point in the video.
+- Her skin is pixel-identical to the reference frame in every single frame — no invented tattoo, mark, scar, or piercing anywhere, at any point in the video. If a real tattoo or mark is visible in the reference frame, it only ever shows on exposed skin, properly hidden under clothing wherever fabric covers it — never visible on top of or through the fabric.
 - Her hair length, color, and style stay exactly as shown in the reference frame — natural movement only, never regrown, cut, or restyled.
 - Exactly two arms, two hands, five fingers per hand, one head, at all times — never an extra or missing limb, hand, or finger.
 
@@ -54,7 +54,7 @@ Timing rule: the hand gesture starts a fraction BEFORE the word and the camera m
 
 PRODUCT INTERACTION:
 - The product must stay pixel-consistent with the reference frame at all times. Never invent, add, or remove product features — no new pockets, buttons, zippers, seams, patterns, logos, or texture that isn't already visible in the reference frame.
-- Her skin must stay pixel-consistent with the reference frame too. Never invent, add, or remove tattoos, marks, scars, or piercings that aren't already visible in the reference frame.
+- Her skin must stay pixel-consistent with the reference frame too. Never invent, add, or remove tattoos, marks, scars, or piercings that aren't already visible in the reference frame; a real one only shows on exposed skin, never on top of or through clothing.
 - If a phone is visible in her hand (matching the reference frame), its screen stays off or black for the entire video — never show an app, photo, thumbnail, or any interface on it.
 - If touched or held, hand pressure, grip, and movement must be realistic and proportional.
 - Hands must never cover the feature being named — they frame it, brush alongside it, or gesture toward it, always leaving the detail visible to camera.
