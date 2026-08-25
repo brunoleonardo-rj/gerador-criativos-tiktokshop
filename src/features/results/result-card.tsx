@@ -1,12 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import type { CreativeEnvelope } from "@/features/generation/validation";
 import { CopyButton } from "./copy-button";
 import styles from "./results.module.css";
 
 const statusLabel = { valid: "Aprovado", needs_review: "Atenção", blocked: "Bloqueado" } as const;
-function isBlocked(creative: CreativeEnvelope, field: string) { return creative.issues.some((issue) => issue.severity === "block" && (issue.field === field || issue.field.startsWith(`${field}.`) || field.startsWith(`${issue.field}.`))); }
-function addSection(parts: string[], title: string, value: string | null | undefined, blocked: boolean) { if (!blocked && value) parts.push(`## ${title}\n\n${value}`); }
+type ResultTab = "copy" | "veo" | "gemini" | "publication";
+const tabs: { id: ResultTab; label: string }[] = [
+  { id: "copy", label: "Copy" },
+  { id: "veo", label: "VEO 3" },
+  { id: "gemini", label: "Gemini" },
+  { id: "publication", label: "Publicação" },
+];
+
+function isBlocked(creative: CreativeEnvelope, field: string) {
+  return creative.issues.some((issue) => issue.severity === "block" && (issue.field === field || issue.field.startsWith(`${field}.`) || field.startsWith(`${issue.field}.`)));
+}
+
+function addSection(parts: string[], title: string, value: string | null | undefined, blocked: boolean) {
+  if (!blocked && value) parts.push(`## ${title}\n\n${value}`);
+}
+
 export function buildCreativePackage(creative: CreativeEnvelope) {
   const parts: string[] = [];
   addSection(parts, "Ambiente", creative.ambiente, isBlocked(creative, "ambiente"));
@@ -25,38 +40,132 @@ export function buildCreativePackage(creative: CreativeEnvelope) {
   addSection(parts, "Prompt VEO 3 — Trecho 3", creative.veoPrompts.trecho3, isBlocked(creative, "veoPrompts.trecho3"));
   return parts.join("\n\n");
 }
-function CopyField({ label, text, blocked }: { label: string; text: string | null; blocked: boolean }) { return <CopyButton label={label} text={text} disabled={blocked || !text} />; }
-function CopySegment({ creative, index }: { creative: CreativeEnvelope; index: 1 | 2 | 3 }) {
-  const segment = creative.copy[`trecho${index}`]; if (!segment) return null; const blocked = isBlocked(creative, `copy.trecho${index}`);
-  return <section className={styles.field}><h3>Copy — trecho {index}</h3><p className={styles.text}>{segment.texto}</p><p className={styles.text}>Segundos: {segment.segundos}. Palavras reais: {creative.actualCounts[`trecho${index}`]}.</p><CopyField label={`Copiar trecho ${index}`} text={segment.texto} blocked={blocked} /></section>;
+
+function buildSectionPackage(creative: CreativeEnvelope, tab: ResultTab) {
+  if (tab === "gemini") return isBlocked(creative, "promptGemini") ? "" : creative.promptGemini;
+  if (tab === "veo") return [creative.veoPrompts.trecho1, creative.veoPrompts.trecho2, creative.veoPrompts.trecho3].filter(Boolean).join("\n\n");
+  if (tab === "copy") return [creative.copy.trecho1?.texto, creative.copy.trecho2?.texto, creative.copy.trecho3?.texto, creative.pov.texto].filter(Boolean).join("\n\n");
+  return buildCreativePackage(creative);
 }
-function VeoPromptCard({ creative, index }: { creative: CreativeEnvelope; index: 1 | 2 | 3 }) {
-  if (!creative.copy[`trecho${index}`]) return null;
-  const prompt = creative.veoPrompts[`trecho${index}`]; const blocked = isBlocked(creative, `veoPrompts.trecho${index}`);
-  return <section className={styles.field}><h3>Prompt VEO 3 — Trecho {index}</h3><pre className={styles.prompt}>{prompt ?? "Prompt VEO 3 indisponível."}</pre><CopyField label={`Copiar Prompt VEO 3 — Trecho ${index}`} text={prompt} blocked={blocked} /></section>;
+
+function CopyField({ label, text, blocked }: { label: string; text: string | null; blocked: boolean }) {
+  return <CopyButton label={label} text={text} disabled={blocked || !text} />;
 }
-export function ResultCard({ creative }: { creative: CreativeEnvelope }) {
-  const packageText = buildCreativePackage(creative);
+
+function OutputField({ title, text, label, blocked = false, meta }: { title: string; text: string | null; label: string; blocked?: boolean; meta?: string }) {
+  return <section className={styles.outputField}>
+    <div className={styles.outputHeading}>
+      <h3>{title}</h3>
+      <CopyField label={label} text={text} blocked={blocked} />
+    </div>
+    <p className={styles.outputText}>{text ?? "Conteúdo indisponível."}</p>
+    {meta && <p className={styles.outputMeta}>{meta}</p>}
+  </section>;
+}
+
+function CopyPanel({ creative }: { creative: CreativeEnvelope }) {
+  const screenText = creative.textoNaTela ?? "Sem texto na tela.";
+  return <div className={styles.panelStack}>
+    {[1, 2, 3].map((index) => {
+      const key = `trecho${index}` as "trecho1" | "trecho2" | "trecho3";
+      const segment = creative.copy[key];
+      if (!segment) return null;
+      return <OutputField key={key} title={`Copy — trecho ${index}`} text={segment.texto} label={`Copiar trecho ${index}`} blocked={isBlocked(creative, `copy.${key}`)} meta={`${segment.segundos} segundos · Palavras reais: ${creative.actualCounts[key]}.`} />;
+    })}
+    <OutputField title="POV" text={creative.pov.texto} label="Copiar POV" blocked={isBlocked(creative, "pov")} meta={`Palavras reais: ${creative.actualCounts.pov}.`} />
+    <details className={styles.compactDisclosure}>
+      <summary>Texto complementar</summary>
+      <OutputField title="Texto na tela" text={screenText} label="Copiar texto na tela" blocked={isBlocked(creative, "textoNaTela")} />
+    </details>
+  </div>;
+}
+
+function VeoPanel({ creative }: { creative: CreativeEnvelope }) {
+  return <div className={styles.panelStack}>
+    {[1, 2, 3].map((index) => {
+      const key = `trecho${index}` as "trecho1" | "trecho2" | "trecho3";
+      if (!creative.copy[key]) return null;
+      return <OutputField key={key} title={`Prompt VEO 3 — Trecho ${index}`} text={creative.veoPrompts[key]} label={`Copiar Prompt VEO 3 — Trecho ${index}`} blocked={isBlocked(creative, `veoPrompts.${key}`)} />;
+    })}
+  </div>;
+}
+
+function GeminiPanel({ creative }: { creative: CreativeEnvelope }) {
+  return <section className={styles.geminiPanel}>
+    <div>
+      <p className={styles.panelEyebrow}>Prompt para imagem de referência</p>
+      <h3>Prompt para Gemini</h3>
+      <p className={styles.panelHint}>Inclui o produto e a copy deste criativo.</p>
+    </div>
+    <pre className={styles.prompt}>{creative.promptGemini}</pre>
+    <CopyField label="Copiar Prompt Gemini" text={creative.promptGemini} blocked={isBlocked(creative, "promptGemini")} />
+  </section>;
+}
+
+function PublicationPanel({ creative }: { creative: CreativeEnvelope }) {
   const status = statusLabel[creative.status];
   const screenText = creative.textoNaTela ?? "Sem texto na tela.";
   const discard = creative.descartavel ? creative.motivoDescartavel ?? "Criativo descartado." : "Criativo mantido.";
   const alerts = creative.issues.length ? creative.issues.map((issue) => `${issue.severity === "block" ? "Bloqueio" : "Atenção"}: ${issue.message}`).join("\n") : "Nenhum alerta.";
-  return <article className={styles.card}><details><summary>{creative.id} — {creative.angulo} ({status})</summary><div className={styles.cardBody}>
-    <section className={styles.field}><h3>ID</h3><p className={styles.text}>{creative.id}</p><CopyField label="Copiar ID" text={creative.id} blocked={false} /></section>
-    <section className={styles.field}><h3>Ângulo</h3><p className={styles.text}>{creative.angulo}</p><CopyField label="Copiar ângulo" text={creative.angulo} blocked={isBlocked(creative, "angulo")} /></section>
-    <section className={styles.field}><h3>Status</h3><p className={styles.text}>{status}</p><CopyField label="Copiar status" text={status} blocked={false} /></section>
-    <section className={styles.field}><h3>Ambiente</h3><p className={styles.text}>{creative.ambiente}</p><CopyField label="Copiar ambiente" text={creative.ambiente} blocked={isBlocked(creative, "ambiente")} /></section>
-    <section className={styles.field}><h3>Figurino</h3><p className={styles.text}>{creative.figurino}</p><CopyField label="Copiar figurino" text={creative.figurino} blocked={isBlocked(creative, "figurino")} /></section>
-    <section className={styles.field}><h3>Pose</h3><p className={styles.text}>{creative.pose}</p><CopyField label="Copiar pose" text={creative.pose} blocked={isBlocked(creative, "pose")} /></section>
-    <CopySegment creative={creative} index={1} /><CopySegment creative={creative} index={2} /><CopySegment creative={creative} index={3} />
-    <section className={styles.field}><h3>Descrição</h3><p className={styles.text}>{creative.descricao}</p><CopyField label="Copiar descrição" text={creative.descricao} blocked={isBlocked(creative, "descricao")} /></section>
-    <section className={styles.field}><h3>Hashtags</h3><p className={styles.text}>{creative.hashtags.join(" ")}</p><CopyField label="Copiar hashtags" text={creative.hashtags.join(" ")} blocked={isBlocked(creative, "hashtags")} /></section>
-    <section className={styles.field}><h3>POV</h3><p className={styles.text}>{creative.pov.texto}</p><p className={styles.text}>Palavras reais: {creative.actualCounts.pov}.</p><CopyField label="Copiar POV" text={creative.pov.texto} blocked={isBlocked(creative, "pov")} /></section>
-    <section className={styles.field}><h3>Texto na tela</h3><p className={styles.text}>{screenText}</p><CopyField label="Copiar texto na tela" text={screenText} blocked={isBlocked(creative, "textoNaTela")} /></section>
-    <section className={styles.field}><h3>Prompt Gemini</h3><pre className={styles.prompt}>{creative.promptGemini}</pre><CopyField label="Copiar Prompt Gemini" text={creative.promptGemini} blocked={isBlocked(creative, "promptGemini")} /></section>
-    <VeoPromptCard creative={creative} index={1} /><VeoPromptCard creative={creative} index={2} /><VeoPromptCard creative={creative} index={3} />
-    <section className={styles.field}><h3>Descarte</h3><p className={styles.text}>{discard}</p><CopyField label="Copiar descarte" text={discard} blocked={false} /></section>
-    <section className={styles.field}><h3>Alertas do criativo</h3>{creative.issues.length ? <ul>{creative.issues.map((issue, index) => <li key={`${issue.code}-${issue.field}-${index}`}><strong>{issue.severity === "block" ? "Bloqueio" : "Atenção"}: </strong>{issue.message}</li>)}</ul> : <p className={styles.text}>Nenhum alerta.</p>}<CopyField label="Copiar alertas do criativo" text={alerts} blocked={false} /></section>
-    <div className={styles.packageAction}><CopyButton label="Copiar pacote completo" text={packageText} disabled={!packageText} /></div>
-  </div></details></article>;
+  return <div className={styles.panelStack}>
+    <details className={styles.compactDisclosure} open>
+      <summary>Detalhes da cena</summary>
+      <div className={styles.sceneGrid}>
+        <OutputField title="Ambiente" text={creative.ambiente} label="Copiar ambiente" blocked={isBlocked(creative, "ambiente")} />
+        <OutputField title="Figurino" text={creative.figurino} label="Copiar figurino" blocked={isBlocked(creative, "figurino")} />
+        <OutputField title="Pose" text={creative.pose} label="Copiar pose" blocked={isBlocked(creative, "pose")} />
+      </div>
+    </details>
+    <OutputField title="Descrição" text={creative.descricao} label="Copiar descrição" blocked={isBlocked(creative, "descricao")} />
+    <OutputField title="Hashtags" text={creative.hashtags.join(" ")} label="Copiar hashtags" blocked={isBlocked(creative, "hashtags")} />
+    <details className={styles.compactDisclosure}>
+      <summary>Validação e metadados</summary>
+      <div className={styles.sceneGrid}>
+        <OutputField title="ID" text={creative.id} label="Copiar ID" />
+        <OutputField title="Ângulo" text={creative.angulo} label="Copiar ângulo" blocked={isBlocked(creative, "angulo")} />
+        <OutputField title="Status" text={status} label="Copiar status" />
+        <OutputField title="Texto na tela" text={screenText} label="Copiar texto na tela" blocked={isBlocked(creative, "textoNaTela")} />
+        <OutputField title="Descarte" text={discard} label="Copiar descarte" />
+      </div>
+      <section className={styles.alertField}>
+        <h3>Alertas do criativo</h3>
+        {creative.issues.length ? <ul>{creative.issues.map((issue, index) => <li key={`${issue.code}-${issue.field}-${index}`}><strong>{issue.severity === "block" ? "Bloqueio" : "Atenção"}:</strong> {issue.message}</li>)}</ul> : <p>Nenhum alerta.</p>}
+        <CopyField label="Copiar alertas do criativo" text={alerts} blocked={false} />
+      </section>
+    </details>
+  </div>;
+}
+
+export function ResultCard({ creative, label = "Criativo" }: { creative: CreativeEnvelope; label?: string }) {
+  const [tab, setTab] = useState<ResultTab>("copy");
+  const packageText = buildCreativePackage(creative);
+  const status = statusLabel[creative.status];
+
+  return <article className={styles.detailPanel} aria-label={`${label}: ${creative.angulo}`}>
+    <header className={styles.detailHeader}>
+      <div>
+        <div className={styles.detailTitleRow}>
+          <h2>{label}</h2>
+          <span className={`${styles.statusBadge} ${styles[creative.status]}`}>{status}</span>
+        </div>
+        <p>{creative.angulo}</p>
+      </div>
+    </header>
+
+    <div className={styles.tabList} role="tablist" aria-label="Conteúdo do criativo">
+      {tabs.map((item) => <button key={item.id} id={`creative-${creative.id}-${item.id}-tab`} type="button" role="tab" aria-selected={tab === item.id} aria-controls={`creative-${creative.id}-${item.id}`} onClick={() => setTab(item.id)}>{item.label}</button>)}
+    </div>
+
+    <div className={styles.tabPanel} id={`creative-${creative.id}-${tab}`} role="tabpanel" aria-labelledby={`creative-${creative.id}-${tab}-tab`}>
+      {tab === "copy" && <CopyPanel creative={creative} />}
+      {tab === "veo" && <VeoPanel creative={creative} />}
+      {tab === "gemini" && <GeminiPanel creative={creative} />}
+      {tab === "publication" && <PublicationPanel creative={creative} />}
+    </div>
+
+    <footer className={styles.detailActions}>
+      <CopyButton label="Copiar seção" text={buildSectionPackage(creative, tab)} />
+      <CopyButton label="Copiar pacote completo" text={packageText} disabled={!packageText} />
+    </footer>
+  </article>;
 }

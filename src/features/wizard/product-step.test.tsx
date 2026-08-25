@@ -71,11 +71,11 @@ describe("ProductStep", () => {
     expect(screen.queryByLabelText("Nome do produto")).not.toBeInTheDocument();
   });
 
-  it("enables analysis after at least one image is selected", () => {
+  it("enables analysis after at least one image is selected", async () => {
     render(<ProductStepFixture {...uploadProps} images={[productImage]} />);
 
     expect(screen.getByRole("button", { name: "Analisar imagens" })).toBeEnabled();
-    expect(screen.getByAltText("Prévia de product.jpg")).toBeInTheDocument();
+    expect(await screen.findByAltText("Prévia de product.jpg")).toBeInTheDocument();
   });
 
   it("preserves thumbnails and blocks image edits while analyzing", async () => {
@@ -85,7 +85,7 @@ describe("ProductStep", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent(/lendo os dados do produto/i);
     expect(screen.getByRole("status").closest('[aria-busy="true"]')).toBeNull();
-    expect(screen.getByAltText("Prévia de product.jpg")).toBeInTheDocument();
+    expect(await screen.findByAltText("Prévia de product.jpg")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Analisando imagens…" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Remover product.jpg" })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "Analisando imagens…" }));
@@ -93,13 +93,15 @@ describe("ProductStep", () => {
     expect(onImagesChange).not.toHaveBeenCalled();
   });
 
-  it("shows editable extracted fields only in review state", () => {
+  it("keeps the analyzed images beside the editable extracted fields", async () => {
     render(<ProductStepFixture {...uploadProps} images={[productImage]} state="review" />);
 
+    expect(screen.getByRole("region", { name: "Imagens do produto" })).toBeInTheDocument();
+    expect(await screen.findByAltText("Prévia de product.jpg")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Dados extraídos" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome do produto")).toHaveValue("Garrafa");
     expect(screen.getByRole("button", { name: "Analisar novamente" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Trocar imagens" })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Fotos e prints do produto")).not.toBeInTheDocument();
   });
 
   it("shows extraction warnings and a retryable analysis error", async () => {

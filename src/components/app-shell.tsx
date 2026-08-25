@@ -15,12 +15,12 @@ export function AppShell({ children }: PropsWithChildren) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-[#e6ded6] bg-white/85 backdrop-blur">
-        <nav aria-label="Navegação principal" className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-3 px-4 py-4 sm:px-6">
-          <Link href="/" className="font-semibold tracking-tight">Nova geração</Link>
-          <Link href="/resultado" className="text-[#514955] hover:text-[#6f52d9]">Resultados</Link>
-          <Link href="/configuracoes" className="text-[#514955] hover:text-[#6f52d9]">Configurações</Link>
-          <button type="button" onClick={signOut} className="ml-auto rounded-md px-3 py-2 text-sm font-semibold text-[#514955] hover:bg-[#fff6f3] hover:text-[#201a22]">Sair</button>
+      <header className="sticky top-0 z-40 border-b border-[#e8e1dc] bg-white/90 backdrop-blur-xl">
+        <nav aria-label="Navegação principal" className="mx-auto flex min-h-[4.5rem] max-w-[96rem] flex-wrap items-center gap-x-6 gap-y-2 px-4 sm:px-6">
+          <Link href="/" className="mr-auto text-[1.05rem] font-extrabold tracking-[-0.025em] text-[#201a22]">Nova geração</Link>
+          <Link href="/resultado" className="text-sm font-semibold text-[#514955] transition-colors hover:text-[#6f52d9]">Resultados</Link>
+          <Link href="/configuracoes" className="text-sm font-semibold text-[#514955] transition-colors hover:text-[#6f52d9]">Configurações</Link>
+          <button type="button" onClick={signOut} className="rounded-full border border-[#ded6d0] px-4 py-2 text-sm font-semibold text-[#514955] transition-colors hover:border-[#b9ace4] hover:bg-[#fbf9ff] hover:text-[#4f3c90]">Sair</button>
         </nav>
       </header>
       {children}

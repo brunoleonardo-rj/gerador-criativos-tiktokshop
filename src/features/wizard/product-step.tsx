@@ -82,16 +82,43 @@ export function ProductStep({
       </div>
     </>}
 
-    {reviewing && <>
-      {warnings.length > 0 && <aside className={styles.analysisWarnings} aria-labelledby="analysis-warnings-title">
-        <strong id="analysis-warnings-title">Pontos para conferir</strong>
-        <ul>{warnings.map((warning, index) => <li key={`${index}-${warning}`}>{warning}</li>)}</ul>
-      </aside>}
-      <ProductReviewForm register={register} errors={errors} />
-      <div className={styles.productActions}>
+    {reviewing && <div className={styles.productReviewWorkspace}>
+      <section className={styles.productMediaPanel} aria-label="Imagens do produto">
+        <header>
+          <p className={styles.panelLabel}>Imagens do produto</p>
+          <h3>{images.length} {images.length === 1 ? "imagem analisada" : "imagens analisadas"}</h3>
+        </header>
+        <div className={styles.reviewImageField}>
+          <UploadField
+            role="product"
+            min={1}
+            max={8}
+            items={images}
+            label="Fotos e prints do produto"
+            disabled
+            onChange={onImagesChange}
+          />
+        </div>
         <button className={styles.secondaryButton} type="button" onClick={onBackToImages}>Trocar imagens</button>
-        <button className={styles.primaryButton} type="button" onClick={onAnalyze} disabled={images.length === 0}>Analisar novamente</button>
-      </div>
-    </>}
+      </section>
+
+      <section className={styles.extractedPanel} aria-label="Dados extraídos">
+        <header className={styles.extractedHeader}>
+          <div>
+            <p className={styles.panelLabel}>Dados extraídos</p>
+            <h3>Revise antes de continuar</h3>
+          </div>
+          <span className={styles.successPill}>Extração concluída</span>
+        </header>
+        {warnings.length > 0 && <aside className={styles.analysisWarnings} aria-labelledby="analysis-warnings-title">
+          <strong id="analysis-warnings-title">Pontos para conferir</strong>
+          <ul>{warnings.map((warning, index) => <li key={`${index}-${warning}`}>{warning}</li>)}</ul>
+        </aside>}
+        <ProductReviewForm register={register} errors={errors} />
+        <div className={styles.productActions}>
+          <button className={styles.primaryButton} type="button" onClick={onAnalyze} disabled={images.length === 0}>Analisar novamente</button>
+        </div>
+      </section>
+    </div>}
   </section>;
 }

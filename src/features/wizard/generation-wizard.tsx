@@ -563,6 +563,11 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
   }
 
   const names = ["Produto", "Referências", "Direção"];
+  const descriptions = [
+    "Envie e revise os dados do produto",
+    "Adicione referências visuais",
+    "Defina estilo e tom do conteúdo",
+  ];
   const productErrorContent = productError ? <>
     <span>{errorMessages[productError] ?? errorMessages.UPSTREAM_UNAVAILABLE}</span>
     {productError === "API_NOT_CONFIGURED"
@@ -574,23 +579,30 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
 
   return <main className={styles.page}>
     <div className={styles.container}>
-      <header className={styles.wizardHeader}>
-        <p className={styles.eyebrow}>Estúdio de criativos</p>
-        <h1>Nova geração</h1>
-        <p>Transforme as imagens do anúncio em um briefing factual, revise os dados e escolha a direção criativa.</p>
-      </header>
+      <aside className={styles.workflowSidebar}>
+        <nav className={styles.stepNav} aria-label="Etapas da geração">
+          <ol className={styles.stepList}>
+            {names.map((name, index) => <li className={styles.stepItem} key={name} aria-current={step === index ? "step" : undefined}>
+              <span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>
+              <span className={styles.stepCopy}><strong>{name}</strong><small>{descriptions[index]}</small></span>
+            </li>)}
+          </ol>
+        </nav>
+        <aside className={styles.sidebarTip}>
+          <strong>Dica</strong>
+          <p>Imagens nítidas e completas melhoram a leitura dos dados.</p>
+        </aside>
+      </aside>
 
-      <nav className={styles.stepNav} aria-label="Etapas da geração">
-        <ol className={styles.stepList}>
-          {names.map((name, index) => <li className={styles.stepItem} key={name} aria-current={step === index ? "step" : undefined}>
-            <span className={styles.stepNumber} aria-hidden="true">{index + 1}</span>
-            <span>{name}</span>
-          </li>)}
-        </ol>
-      </nav>
-      <p className={styles.currentStep} aria-live="polite">Etapa {step + 1} de 3: {names[step]}</p>
+      <section className={styles.wizardWorkspace} aria-label="Área de trabalho da geração">
+        <header className={styles.wizardHeader}>
+          <p className={styles.eyebrow}>Estúdio de criativos</p>
+          <h1>Nova geração</h1>
+          <p>Transforme imagens reais do anúncio em um briefing factual e criativos prontos para produção.</p>
+        </header>
+        <p className={styles.currentStep} aria-live="polite">Etapa {step + 1} de 3: {names[step]}</p>
 
-      <section className={styles.contentCard} aria-label={`Etapa ${names[step]}`}>
+        <section className={styles.contentCard} aria-label={`Etapa ${names[step]}`}>
         {step === 0 && imageLoading && <p className={styles.loadingProduct} role="status">Carregando imagens do produto…</p>}
         {step === 0 && !imageLoading && <ProductStep
           register={form.register}
@@ -632,6 +644,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
             ? <button className={styles.continueButton} type="button" onClick={() => void next()} disabled={generating || analyzing || (step === 0 && (!analysisFresh || editingSources))}>Continuar</button>
             : <button className={styles.continueButton} type="button" onClick={() => void submit()} disabled={generating || invalidOutputIsUnchanged}>{generating ? "Gerando…" : "Gerar criativos"}</button>}
         </footer>
+        </section>
       </section>
     </div>
   </main>;

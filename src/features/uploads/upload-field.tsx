@@ -19,6 +19,19 @@ const allowed = new Set<string>(ACCEPTED_IMAGE_TYPES);
 const extensionForType: Record<string, RegExp> = { "image/jpeg": /\.jpe?g$/iu, "image/png": /\.png$/iu, "image/webp": /\.webp$/iu };
 const acceptedFile = (file: File): boolean => allowed.has(file.type) && extensionForType[file.type]?.test(file.name) === true;
 
+function StoredImagePreview({ item }: { item: StoredImage }) {
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    const next = URL.createObjectURL(item.blob);
+    queueMicrotask(() => { if (active) setPreview(next); });
+    return () => { active = false; URL.revokeObjectURL(next); };
+  }, [item.blob]);
+  // Local object URLs are already resized and revoked by this component.
+  // eslint-disable-next-line @next/next/no-img-element
+  return preview ? <img src={preview} alt={`Prévia de ${item.name}`} /> : null;
+}
+
 export function UploadField({ role, min, max, items, label = labels[role], help, disabled = false, onChange }: UploadFieldProps) {
   const id = useId();
   const helpText = help ?? `Selecione entre ${min} e ${max} imagens. JPEG, PNG ou WEBP.`;
@@ -32,16 +45,6 @@ export function UploadField({ role, min, max, items, label = labels[role], help,
     currentItems.current = items;
     currentDisabled.current = disabled;
   }, [disabled, items]);
-  const [previews, setPreviews] = useState<Record<string, string>>({});
-  // Object URLs are created and revoked in the same effect (not a useMemo) so React's
-  // dev-mode mount→cleanup→remount cycle recreates them instead of leaving stale, revoked URLs.
-  useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const item of items) next[item.id] = URL.createObjectURL(item.blob);
-    setPreviews(next);
-    return () => Object.values(next).forEach((url) => URL.revokeObjectURL(url));
-  }, [items]);
-
   function commit(next: StoredImage[]) {
     if (currentDisabled.current) return;
     currentItems.current = next;
@@ -82,9 +85,7 @@ export function UploadField({ role, min, max, items, label = labels[role], help,
     {error && <p role="alert">{error}</p>}
     <ul aria-label="Imagens selecionadas">
       {items.map((item) => <li key={item.id}>
-        {/* Local object URLs are already resized and revoked by this component. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {previews[item.id] && <img src={previews[item.id]} alt={`Prévia de ${item.name}`} />}
+        <StoredImagePreview item={item} />
         <span>{item.name} — {item.width}×{item.height}</span>
         <button type="button" disabled={disabled} onClick={() => commit(currentItems.current.filter((candidate) => candidate.id !== item.id))} aria-label={`Remover ${item.name}`}>Remover</button>
       </li>)}

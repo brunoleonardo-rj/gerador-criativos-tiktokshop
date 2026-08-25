@@ -98,6 +98,9 @@ describe("GenerationWizard", () => {
     expect(navigation).toHaveTextContent("Produto");
     expect(navigation).toHaveTextContent("Referências");
     expect(navigation).toHaveTextContent("Direção");
+    expect(navigation).toHaveTextContent("Envie e revise os dados do produto");
+    expect(navigation).toHaveTextContent("Adicione referências visuais");
+    expect(navigation).toHaveTextContent("Defina estilo e tom do conteúdo");
     expect(screen.getByText("Etapa 1 de 3: Produto")).toBeVisible();
     expect(screen.getByText("Produto").closest("li")).toHaveAttribute("aria-current", "step");
   });

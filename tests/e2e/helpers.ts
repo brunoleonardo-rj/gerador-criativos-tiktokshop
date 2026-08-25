@@ -18,7 +18,7 @@ export async function configureFakeKeyAndTemplate(page: Page) {
   await page.goto("/configuracoes");
   await page.getByLabel("Nova chave da Anthropic").fill("sk-ant-e2e-1234");
   await page.getByRole("tab", { name: "Prompt VEO 3" }).click();
-  await page.getByLabel("Template VEO 3").fill("Fala: {{copy_completa}}");
+  await page.getByLabel("Template VEO 3").fill("Fala: {{copy_trecho}}");
   await page.getByRole("button", { name: "Salvar configurações" }).click();
   await expect(page.getByText("Configurações salvas.", { exact: true })).toBeVisible();
 }

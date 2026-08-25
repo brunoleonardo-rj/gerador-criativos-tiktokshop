@@ -7,37 +7,57 @@ import { validateCreativeBatch } from "@/features/generation/validation";
 import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
 
 function result() { return validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "VEO {{copy_trecho}}", DEFAULT_GEMINI_TEMPLATE, "2026-08-21T12:00:00.000Z").creatives[0]; }
+function mockClipboard() {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  return writeText;
+}
 describe("ResultCard", () => {
   afterEach(() => cleanup());
-  it("offers a copy control for every displayed creative field", () => {
+  it("keeps result groups behind compact tabs and exposes the Gemini prompt", async () => {
+    const user = userEvent.setup();
     render(<ResultCard creative={result()} />);
 
-    for (const name of [
-      "Copiar ID", "Copiar ângulo", "Copiar status", "Copiar ambiente", "Copiar figurino", "Copiar pose",
-      "Copiar trecho 1", "Copiar trecho 2", "Copiar descrição", "Copiar hashtags", "Copiar POV",
-      "Copiar texto na tela", "Copiar Prompt Gemini", "Copiar Prompt VEO 3 — Trecho 1", "Copiar Prompt VEO 3 — Trecho 2", "Copiar descarte", "Copiar alertas do criativo",
-    ]) expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    for (const name of ["Copy", "VEO 3", "Gemini", "Publicação"]) {
+      expect(screen.getByRole("tab", { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("button", { name: "Copiar trecho 1" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Copiar Prompt Gemini" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Gemini" }));
+    expect(screen.getByText("Prompt para Gemini")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copiar Prompt Gemini" })).toBeInTheDocument();
   });
 
-  it("blocks only description while VEO stays copyable", () => {
+  it("blocks only description while VEO stays copyable", async () => {
+    const user = userEvent.setup();
     const creative = { ...result(), issues: [{ code: "PRICE", severity: "block" as const, field: "descricao", message: "Preço proibido" }], status: "blocked" as const };
     render(<ResultCard creative={creative} />);
+    await user.click(screen.getByRole("tab", { name: "Publicação" }));
     expect(screen.getByRole("button", { name: "Copiar descrição" })).toBeDisabled();
+    await user.click(screen.getByRole("tab", { name: "VEO 3" }));
     expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeEnabled();
   });
 
-  it("keeps warning fields copyable and keeps null VEO disabled", () => {
+  it("keeps warning fields copyable and keeps null VEO disabled", async () => {
+    const user = userEvent.setup();
     const warning = { ...result(), issues: [{ code: "WORDS", severity: "warning" as const, field: "descricao", message: "Revise" }], status: "needs_review" as const };
-    const { rerender } = render(<ResultCard creative={warning} />);
+    render(<ResultCard creative={warning} />);
+    await user.click(screen.getByRole("tab", { name: "Publicação" }));
     expect(screen.getByRole("button", { name: "Copiar descrição" })).toBeEnabled();
-    rerender(<ResultCard creative={{ ...warning, veoPrompts: { trecho1: null, trecho2: null, trecho3: null } }} />);
+    await user.click(screen.getByRole("tab", { name: "VEO 3" }));
+    expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeEnabled();
+    cleanup();
+    render(<ResultCard creative={{ ...warning, veoPrompts: { trecho1: null, trecho2: null, trecho3: null } }} />);
+    await user.click(screen.getByRole("tab", { name: "VEO 3" }));
     expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeDisabled();
   });
 
-  it("blocks POV subfields without blocking another copy field", () => {
+  it("blocks POV subfields without blocking another copy field", async () => {
+    const user = userEvent.setup();
     const creative = { ...result(), issues: [{ code: "POV", severity: "block" as const, field: "pov.texto", message: "POV inválido" }], status: "blocked" as const };
     render(<ResultCard creative={creative} />);
     expect(screen.getByRole("button", { name: "Copiar POV" })).toBeDisabled();
+    await user.click(screen.getByRole("tab", { name: "Publicação" }));
     expect(screen.getByRole("button", { name: "Copiar descrição" })).toBeEnabled();
   });
 
@@ -46,7 +66,7 @@ describe("ResultCard", () => {
     render(<ResultCard creative={creative} />);
     expect(screen.getByRole("button", { name: "Copiar trecho 1" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Copiar trecho 2" })).toBeEnabled();
-    const writeText = vi.fn().mockResolvedValue(undefined); Object.assign(navigator, { clipboard: { writeText } });
+    const writeText = mockClipboard();
     await userEvent.click(screen.getByRole("button", { name: "Copiar pacote completo" }));
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("## Copy — trecho 2"));
     expect(writeText).toHaveBeenCalledWith(expect.not.stringContaining("## Copy — trecho 1"));
@@ -55,7 +75,7 @@ describe("ResultCard", () => {
 
   it("blocks all copy segments for a copy ancestor issue while retaining safe package fields", async () => {
     const creative = { ...result(), issues: [{ code: "SEGMENT_STRUCTURE", severity: "block" as const, field: "copy", message: "Estrutura inválida" }], status: "blocked" as const };
-    const writeText = vi.fn().mockResolvedValue(undefined); Object.assign(navigator, { clipboard: { writeText } });
+    const writeText = mockClipboard();
     render(<ResultCard creative={creative} />);
     expect(screen.getByRole("button", { name: "Copiar trecho 1" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Copiar trecho 2" })).toBeDisabled();
@@ -71,10 +91,10 @@ describe("ResultCard", () => {
       issues: ["ambiente", "pose", "hashtags"].map((field) => ({ code: "CREATIVE_DUPLICATE", severity: "block" as const, field, message: "Criativo duplicado" })),
       status: "blocked" as const,
     };
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
+    const writeText = mockClipboard();
     render(<ResultCard creative={creative} />);
 
+    await userEvent.click(screen.getByRole("tab", { name: "Publicação" }));
     expect(screen.getByRole("button", { name: "Copiar ambiente" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Copiar pose" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Copiar hashtags" })).toBeDisabled();
@@ -86,18 +106,22 @@ describe("ResultCard", () => {
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining("## Descrição"));
   });
 
-  it("labels warnings and blocks with accessible severity", () => {
+  it("labels warnings and blocks with accessible severity", async () => {
+    const user = userEvent.setup();
     const creative = { ...result(), issues: [{ code: "ONE", severity: "block" as const, field: "descricao", message: "Bloqueie" }, { code: "TWO", severity: "warning" as const, field: "pov", message: "Revise" }], status: "blocked" as const };
     render(<ResultCard creative={creative} />);
+    await user.click(screen.getByRole("tab", { name: "Publicação" }));
     expect(screen.getByText("Bloqueio:")).toBeInTheDocument();
     expect(screen.getByText("Atenção:")).toBeInTheDocument();
   });
 
-  it("opens with keyboard and displays real counts and rendered prompts", async () => {
+  it("switches tabs with the keyboard and displays real rendered prompts", async () => {
     render(<ResultCard creative={result()} />);
-    await userEvent.keyboard("{Tab}{Enter}");
     expect(screen.getAllByText(/Palavras reais:/).length).toBeGreaterThan(0);
+    screen.getByRole("tab", { name: "VEO 3" }).focus();
+    await userEvent.keyboard("{Enter}");
     expect(screen.getByText(/VEO Eu deixo minha água/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Gemini" }));
     expect(screen.getByText(/PRODUTO: Garrafa térmica/)).toBeInTheDocument();
   });
 });
