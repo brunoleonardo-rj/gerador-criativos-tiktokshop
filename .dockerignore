@@ -1,0 +1,14 @@
+.git
+.github
+.next
+.env
+.env.*
+!.env.example
+node_modules
+data
+coverage
+playwright-report
+test-results
+.claude
+dev-start.cmd
+
