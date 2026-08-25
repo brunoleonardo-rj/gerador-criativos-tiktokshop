@@ -8,6 +8,8 @@ describe("SYSTEM_PROMPT", () => {
     expect(SYSTEM_PROMPT).toContain("speechBeats");
     expect(SYSTEM_PROMPT).toContain("motivoDescartavel deve ser null");
     expect(SYSTEM_PROMPT).toContain("não use sobreposições visuais");
+    expect(SYSTEM_PROMPT).toContain("HOOK → CORPO → CTA");
+    expect(SYSTEM_PROMPT).toContain("trecho1 é o HOOK");
     expect(SYSTEM_PROMPT).toContain("Não mencione valores monetários quando a política for sem preço");
     expect(SYSTEM_PROMPT.endsWith("Retorne somente o objeto que corresponda ao schema configurado em output_config.format.")).toBe(true);
   });
