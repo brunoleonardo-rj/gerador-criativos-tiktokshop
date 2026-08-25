@@ -133,18 +133,54 @@ async function findPnpmPackage(store: string, packageName: string, version: stri
   return undefined;
 }
 
-async function materializeNextRuntimeDependencies(destination: string): Promise<void> {
-  const nodeModules = path.join(destination, "node_modules");
-  const nextPackage = path.join(nodeModules, "next");
-  if (!(await pathExists(nextPackage))) return;
-  const dependencies = (await readPackageManifest(nextPackage)).dependencies ?? {};
-  const store = path.join(nodeModules, ".pnpm");
+async function packageDirectories(nodeModules: string): Promise<string[]> {
+  const packages: string[] = [];
+  for (const entry of await readdir(nodeModules, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+    const item = path.join(nodeModules, entry.name);
+    if (!entry.name.startsWith("@")) {
+      packages.push(item);
+      continue;
+    }
+    for (const scopedEntry of await readdir(item, { withFileTypes: true })) {
+      if (scopedEntry.isDirectory()) packages.push(path.join(item, scopedEntry.name));
+    }
+  }
+  return packages;
+}
+
+async function materializePackageDependencies(nodeModules: string, store: string): Promise<void> {
+  const queue = await packageDirectories(nodeModules);
+  const visited = new Set<string>();
+  while (queue.length > 0) {
+    const packageDirectory = queue.shift()!;
+    const key = lexicalPath(packageDirectory);
+    if (visited.has(key)) continue;
+    visited.add(key);
+    if (!(await pathExists(path.join(packageDirectory, "package.json")))) continue;
+
+    const dependencies = (await readPackageManifest(packageDirectory)).dependencies ?? {};
+    for (const [name, version] of Object.entries(dependencies)) {
+      const target = path.join(nodeModules, name);
+      if (!(await pathExists(target))) {
+        const candidate = await findPnpmPackage(store, name, version);
+        if (!candidate) continue;
+        await copyMaterialized(candidate, target, new Set(), new Set());
+      }
+      queue.push(target);
+    }
+  }
+}
+
+async function materializeRuntimeDependencies(destination: string): Promise<void> {
+  const rootNodeModules = path.join(destination, "node_modules");
+  const store = path.join(rootNodeModules, ".pnpm");
   if (!(await pathExists(store))) return;
-  for (const [name, version] of Object.entries(dependencies)) {
-    const target = path.join(nodeModules, name);
-    if (await pathExists(target)) continue;
-    const candidate = await findPnpmPackage(store, name, version);
-    if (candidate) await copyMaterialized(candidate, target, new Set(), new Set());
+
+  await materializePackageDependencies(rootNodeModules, store);
+  const tracedNodeModules = path.join(destination, ".next", "node_modules");
+  if (await pathExists(tracedNodeModules)) {
+    await materializePackageDependencies(tracedNodeModules, store);
   }
 }
 
@@ -169,7 +205,7 @@ export async function prepareStandalone(options: StandaloneOptions = {}): Promis
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
     }
-    await materializeNextRuntimeDependencies(destination);
+    await materializeRuntimeDependencies(destination);
     await assertNoLinks(destination);
     if (!(await stat(path.join(destination, "server.js"))).isFile() || !(await stat(path.join(destination, "node_modules"))).isDirectory()) {
       throw new Error("A entrega materializada não contém o runtime standalone completo.");

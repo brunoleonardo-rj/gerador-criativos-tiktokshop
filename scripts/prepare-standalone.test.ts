@@ -112,4 +112,37 @@ describe("prepareStandalone", () => {
     expect(await readFile(path.join(destination, "node_modules", "@next", "env", "index.js"), "utf8"))
       .toBe("module.exports = 'runtime env';\n");
   });
+
+  it("promotes dependencies required by traced packages under .next/node_modules", async () => {
+    const { source, root, destination } = await fixture();
+    const prismaClient = path.join(source, ".next", "node_modules", "@prisma", "client-traced");
+    const runtimeUtils = path.join(
+      source,
+      "node_modules",
+      ".pnpm",
+      "@prisma+client-runtime-utils@7.9.1",
+      "node_modules",
+      "@prisma",
+      "client-runtime-utils",
+    );
+    await mkdir(prismaClient, { recursive: true });
+    await mkdir(runtimeUtils, { recursive: true });
+    await writeFile(path.join(prismaClient, "package.json"), JSON.stringify({
+      name: "@prisma/client",
+      version: "7.9.1",
+      dependencies: { "@prisma/client-runtime-utils": "7.9.1" },
+    }));
+    await writeFile(path.join(runtimeUtils, "package.json"), JSON.stringify({
+      name: "@prisma/client-runtime-utils",
+      version: "7.9.1",
+    }));
+    await writeFile(path.join(runtimeUtils, "index.js"), "module.exports = 'runtime utils';\n");
+
+    await prepareStandalone({ workspaceRoot: root, source, destination });
+
+    expect(await readFile(
+      path.join(destination, ".next", "node_modules", "@prisma", "client-runtime-utils", "index.js"),
+      "utf8",
+    )).toBe("module.exports = 'runtime utils';\n");
+  });
 });
