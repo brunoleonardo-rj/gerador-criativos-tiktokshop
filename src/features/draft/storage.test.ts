@@ -143,4 +143,14 @@ describe("assetStorage", () => {
     await expect(assetStorage.putResult({ id: "not-a-uuid" } as never)).rejects.toThrow();
     expect(await assetStorage.getResult("not-a-uuid")).toBeUndefined();
   });
+
+  it("never deletes an unreadable stored result while attempting to open it", async () => {
+    const id = "40000000-0000-4000-8000-000000000000";
+    const unreadable = { id, creatives: [], legacyPayload: "preserve-me" };
+    const db = await openDB("creative-generator", 2);
+    await db.put("results", unreadable);
+
+    expect(await assetStorage.getResult(id)).toBeUndefined();
+    expect(await db.get("results", id)).toEqual(unreadable);
+  });
 });

@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ResultPage } from "./result-page";
@@ -10,8 +10,8 @@ const result = validateCreativeBatch(generationInputFixture(), creativeBatchFixt
 describe("ResultPage", () => {
   afterEach(() => cleanup());
   it("loads the current browser result once from storage", async () => {
-    const getResult = vi.fn().mockResolvedValue({ ...result, id }); const fetchCurrentTemplates = vi.fn().mockResolvedValue(null);
-    render(<ResultPage id={id} storage={{ getResult }} fetchCurrentTemplates={fetchCurrentTemplates} />);
+    const getResult = vi.fn().mockResolvedValue({ ...result, id });
+    render(<ResultPage id={id} storage={{ getResult }} />);
     expect(screen.getByText("Carregando resultado…")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Garrafa térmica" })).toBeInTheDocument();
     expect(getResult).toHaveBeenCalledOnce();
@@ -24,7 +24,7 @@ describe("ResultPage", () => {
       creatives: [first, { ...first, id: "creative-2", angulo: "Benefícios do produto" }],
     };
     const user = userEvent.setup();
-    render(<ResultPage id={id} storage={{ getResult: vi.fn().mockResolvedValue(stored) }} fetchCurrentTemplates={vi.fn().mockResolvedValue(null)} />);
+    render(<ResultPage id={id} storage={{ getResult: vi.fn().mockResolvedValue(stored) }} />);
 
     expect(await screen.findByRole("heading", { name: "Criativo 01" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Criativo 02" })).not.toBeInTheDocument();
@@ -32,30 +32,15 @@ describe("ResultPage", () => {
     expect(screen.getByRole("heading", { name: "Criativo 02" })).toBeInTheDocument();
     expect(within(screen.getByRole("article", { name: /Criativo 02/ })).getByText("Benefícios do produto")).toBeInTheDocument();
   });
-  it("re-renders prompts and persists them when the saved templates changed since generation", async () => {
+  it("keeps historic generated content immutable when it is opened", async () => {
     const getResult = vi.fn().mockResolvedValue({ ...result, id, settingsUpdatedAt: null });
     const putResult = vi.fn().mockResolvedValue(undefined);
-    const fetchCurrentTemplates = vi.fn().mockResolvedValue({ veoTemplate: "ATUALIZADO {{copy_trecho}}", geminiTemplate: "GEMINI {{produto}}", updatedAt: "2026-08-24T00:00:00.000Z" });
-    render(<ResultPage id={id} storage={{ getResult, putResult }} fetchCurrentTemplates={fetchCurrentTemplates} />);
+    render(<ResultPage id={id} storage={{ getResult, putResult }} />);
     await screen.findByRole("heading", { name: "Garrafa térmica" });
-    await waitFor(() => expect(putResult).toHaveBeenCalledOnce());
-    expect(putResult).toHaveBeenCalledWith(expect.objectContaining({ id, settingsUpdatedAt: "2026-08-24T00:00:00.000Z" }));
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(putResult).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("tab", { name: "VEO 3" }));
-    expect((await screen.findAllByText(/ATUALIZADO/)).length).toBeGreaterThan(0);
-  });
-  it("keeps the stored result visible when refreshing its prompts cannot be persisted", async () => {
-    let rejectPut!: (reason: Error) => void;
-    const getResult = vi.fn().mockResolvedValue({ ...result, id, settingsUpdatedAt: null });
-    const putResult = vi.fn(() => new Promise<void>((_resolve, reject) => { rejectPut = reject; }));
-    const fetchCurrentTemplates = vi.fn().mockResolvedValue({ veoTemplate: "ATUALIZADO {{copy_trecho}}", geminiTemplate: "GEMINI {{produto}}", updatedAt: "2026-08-25T12:00:00.000Z" });
-    render(<ResultPage id={id} storage={{ getResult, putResult }} fetchCurrentTemplates={fetchCurrentTemplates} />);
-    expect(await screen.findByRole("heading", { name: "Garrafa térmica" })).toBeInTheDocument();
-    await waitFor(() => expect(putResult).toHaveBeenCalledOnce());
-
-    await act(async () => { rejectPut(new Error("db write failed")); });
-
-    expect(screen.getByRole("heading", { name: "Garrafa térmica" })).toBeInTheDocument();
-    expect(screen.queryByText("Resultado não encontrado neste navegador")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Eu deixo minha água pronta logo cedo/).length).toBeGreaterThan(0);
   });
   it("renders safe missing state for rejected or absent browser storage", async () => {
     const { rerender } = render(<ResultPage id={id} storage={{ getResult: vi.fn().mockRejectedValue(new Error("db")) }} />);

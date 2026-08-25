@@ -119,7 +119,6 @@ export const assetStorage = {
     if (!z.string().uuid().safeParse(id).success) return undefined;
     const db = await database(); const result = await db.get("results", id); const parsed = resultSchema.safeParse(migrateLegacyResult(result));
     if (parsed.success) return parsed.data;
-    if (result) await db.delete("results", id);
     return undefined;
   },
   async listResults(): Promise<StoredResult[]> {
