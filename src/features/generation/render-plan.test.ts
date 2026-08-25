@@ -3,7 +3,7 @@ import { deriveRenderPlan, figurinoInstruction, type FormatoUso, type ZonaFoco }
 
 describe("deriveRenderPlan", () => {
   it.each([
-    ["vestido", "corpo_inteiro", { calcado: true, interacao: false }],
+    ["vestido", "corpo_inteiro", { calcado: false, interacao: false }],
     ["vestido", "pernas_pes", { calcado: true, interacao: false }],
     ["vestido", "tronco", { calcado: false, interacao: false }],
     ["manuseado", "cabeca", { calcado: false, interacao: true }],
@@ -41,7 +41,7 @@ describe("deriveRenderPlan", () => {
 
   it("cobre a matriz de produtos reais do documento de validação", () => {
     const casos: [FormatoUso, ZonaFoco, { calcado: boolean; incluiPes: boolean }][] = [
-      ["vestido", "corpo_inteiro", { calcado: true, incluiPes: true }],
+      ["vestido", "corpo_inteiro", { calcado: false, incluiPes: false }],
       ["vestido", "pernas_pes", { calcado: true, incluiPes: true }],
       ["vestido", "tronco", { calcado: false, incluiPes: false }],
       ["manuseado", "cabeca", { calcado: false, incluiPes: false }],

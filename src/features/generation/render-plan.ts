@@ -22,7 +22,7 @@ export interface RenderPlan {
 const CROP_BY_ZONA: Record<ZonaFoco, CropSpec> = {
   cabeca: { descricao: "plano médio-curto, do busto para cima, com folga acima da cabeça", incluiPes: false },
   tronco: { descricao: "plano médio, da cintura para cima", incluiPes: false },
-  corpo_inteiro: { descricao: "corpo inteiro, da cabeça aos pés", incluiPes: true },
+  corpo_inteiro: { descricao: "corpo inteiro, da cabeça até a altura das canelas, com os pés fora do quadro", incluiPes: false },
   pernas_pes: { descricao: "corpo inteiro, da cabeça aos pés, com os pés e tornozelos totalmente visíveis dentro do quadro", incluiPes: true },
   maos: { descricao: "plano médio, da cintura para cima, com as mãos claramente visíveis e em foco", incluiPes: false },
   objeto: { descricao: "plano médio incluindo a pessoa e o produto no ambiente", incluiPes: false },
