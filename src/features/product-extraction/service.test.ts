@@ -19,6 +19,9 @@ const validExtraction: ProductExtraction = {
   especificacoesCriticas: ["Capacidade: 500 ml"],
   publicoAlvo: null,
   avisos: [],
+  formatoUso: "manuseado",
+  zonaFoco: "maos",
+  detalheCritico: null,
 };
 
 const settings = () => ({

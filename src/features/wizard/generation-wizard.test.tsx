@@ -43,6 +43,9 @@ const validExtraction: ProductExtraction = {
   especificacoesCriticas: ["Aço inox", "500 ml"],
   publicoAlvo: null,
   avisos: ["Público-alvo não identificado."],
+  formatoUso: "manuseado",
+  zonaFoco: "maos",
+  detalheCritico: null,
 };
 
 type TestWizardServices = WizardServices & {

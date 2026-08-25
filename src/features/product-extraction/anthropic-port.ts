@@ -72,6 +72,9 @@ function e2eProductExtraction(): ProductExtraction {
     especificacoesCriticas: [],
     publicoAlvo: null,
     avisos: [],
+    formatoUso: null,
+    zonaFoco: null,
+    detalheCritico: null,
   });
 }
 

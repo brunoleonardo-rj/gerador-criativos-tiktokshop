@@ -13,6 +13,9 @@ const validExtraction = {
   especificacoesCriticas: ["Capacidade: 500 ml"],
   publicoAlvo: "Pessoas que desejam manter bebidas na temperatura.",
   avisos: [],
+  formatoUso: "manuseado" as const,
+  zonaFoco: "maos" as const,
+  detalheCritico: null,
 };
 
 describe("schema de extração de produto", () => {
@@ -22,6 +25,7 @@ describe("schema de extração de produto", () => {
       avaliacoes: null, notaMedia: null, quantidadeAvaliacoes: null,
       precoAtual: null, precoAnterior: null,
       especificacoesCriticas: [], publicoAlvo: null, avisos: ["Texto ilegível."],
+      formatoUso: null, zonaFoco: null, detalheCritico: null,
     }).nomeProduto).toBeNull();
   });
 

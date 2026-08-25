@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatoUsoSchema, zonaFocoSchema } from "../generation/render-plan-schema";
 
 const nullableText = (maxLength: number) => z.string().trim().min(1).max(maxLength).nullable();
 
@@ -14,6 +15,9 @@ export const productExtractionSchema = z.object({
   especificacoesCriticas: z.array(z.string().trim().min(1).max(1_000)).max(30),
   publicoAlvo: nullableText(2_000),
   avisos: z.array(z.string().trim().min(1).max(1_000)).max(30),
+  formatoUso: formatoUsoSchema.nullable(),
+  zonaFoco: zonaFocoSchema.nullable(),
+  detalheCritico: nullableText(500),
 }).strict();
 
 export type ProductExtraction = z.infer<typeof productExtractionSchema>;

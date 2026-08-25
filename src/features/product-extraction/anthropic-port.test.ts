@@ -21,6 +21,9 @@ const validExtraction: ProductExtraction = {
   especificacoesCriticas: ["Capacidade: 500 ml"],
   publicoAlvo: "Pessoas que levam água na rotina.",
   avisos: [],
+  formatoUso: "manuseado",
+  zonaFoco: "maos",
+  detalheCritico: null,
 };
 
 function anthropicResponse(content: unknown[], stopReason = "end_turn") {
