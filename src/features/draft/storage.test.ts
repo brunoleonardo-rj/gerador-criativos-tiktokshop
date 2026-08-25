@@ -101,7 +101,8 @@ describe("assetStorage", () => {
 
   it("lists results created before the render-plan fields changed", async () => {
     const result = { ...validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_trecho}}"), id: "30000000-0000-4000-8000-000000000000", createdAt: "2026-08-25T09:00:00.000Z" };
-    const { productProfile: _productProfile, ...withoutProductProfile } = result;
+    const withoutProductProfile: Partial<typeof result> = { ...result };
+    delete withoutProductProfile.productProfile;
     const legacy = {
       ...withoutProductProfile,
       creatives: result.creatives.map((creative) => ({

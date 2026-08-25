@@ -25,13 +25,20 @@ async function defaultFetchCurrentTemplates(): Promise<CurrentTemplates | null> 
 export function ResultPage({ id, storage = assetStorage, fetchCurrentTemplates = defaultFetchCurrentTemplates }: { id: string; storage?: ResultStorage; fetchCurrentTemplates?: () => Promise<CurrentTemplates | null> }) {
   const [state, setState] = useState<{ id: string | null; result: StoredResult | null }>({ id: null, result: null });
   useEffect(() => { let active = true; const load = z.string().uuid().safeParse(id).success ? storage.getResult(id) : Promise.resolve(undefined);
-    void load.then((result) => { if (active) setState({ id, result: result ?? null }); return result; }).then(async (result) => {
+    void load.then((result) => {
+      if (active) setState({ id, result: result ?? null });
       if (!result || !active) return;
-      const current = await fetchCurrentTemplates();
-      if (!current || !active || current.updatedAt === result.settingsUpdatedAt) return;
-      const refreshed: StoredResult = { ...refreshPrompts(result, current.veoTemplate, current.geminiTemplate, current.updatedAt), id: result.id, createdAt: result.createdAt };
-      if (active) setState({ id, result: refreshed });
-      await storage.putResult?.(refreshed);
+      void (async () => {
+        try {
+          const current = await fetchCurrentTemplates();
+          if (!current || !active || current.updatedAt === result.settingsUpdatedAt) return;
+          const refreshed: StoredResult = { ...refreshPrompts(result, current.veoTemplate, current.geminiTemplate, current.updatedAt), id: result.id, createdAt: result.createdAt };
+          if (active) setState({ id, result: refreshed });
+          await storage.putResult?.(refreshed);
+        } catch {
+          // The persisted result remains usable even when refreshing its prompts fails.
+        }
+      })();
     }).catch(() => { if (active) setState({ id, result: null }); }); return () => { active = false; };
   }, [id, storage, fetchCurrentTemplates]);
   if (state.id !== id) return <main className={styles.page}><section className={styles.shell}><p>Carregando resultado…</p></section></main>;

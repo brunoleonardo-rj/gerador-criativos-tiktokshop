@@ -43,6 +43,20 @@ describe("ResultPage", () => {
     await userEvent.click(screen.getByRole("tab", { name: "VEO 3" }));
     expect((await screen.findAllByText(/ATUALIZADO/)).length).toBeGreaterThan(0);
   });
+  it("keeps the stored result visible when refreshing its prompts cannot be persisted", async () => {
+    let rejectPut!: (reason: Error) => void;
+    const getResult = vi.fn().mockResolvedValue({ ...result, id, settingsUpdatedAt: null });
+    const putResult = vi.fn(() => new Promise<void>((_resolve, reject) => { rejectPut = reject; }));
+    const fetchCurrentTemplates = vi.fn().mockResolvedValue({ veoTemplate: "ATUALIZADO {{copy_trecho}}", geminiTemplate: "GEMINI {{produto}}", updatedAt: "2026-08-25T12:00:00.000Z" });
+    render(<ResultPage id={id} storage={{ getResult, putResult }} fetchCurrentTemplates={fetchCurrentTemplates} />);
+    expect(await screen.findByRole("heading", { name: "Garrafa térmica" })).toBeInTheDocument();
+    await waitFor(() => expect(putResult).toHaveBeenCalledOnce());
+
+    await act(async () => { rejectPut(new Error("db write failed")); });
+
+    expect(screen.getByRole("heading", { name: "Garrafa térmica" })).toBeInTheDocument();
+    expect(screen.queryByText("Resultado não encontrado neste navegador")).not.toBeInTheDocument();
+  });
   it("renders safe missing state for rejected or absent browser storage", async () => {
     const { rerender } = render(<ResultPage id={id} storage={{ getResult: vi.fn().mockRejectedValue(new Error("db")) }} />);
     expect(await screen.findByText("Resultado não encontrado neste navegador")).toBeInTheDocument();

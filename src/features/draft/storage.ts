@@ -90,7 +90,8 @@ function migrateLegacyResult(raw: unknown): unknown {
       migrated = { ...rest, veoPrompts: { trecho1: typeof veoPrompt === "string" ? veoPrompt : null, trecho2: null, trecho3: null } };
     }
     if (migrated.geminiSlots && typeof migrated.geminiSlots === "object" && "enquadramentoExtra" in migrated.geminiSlots) {
-      const { enquadramentoExtra: _enquadramentoExtra, ...geminiSlots } = migrated.geminiSlots as Record<string, unknown>;
+      const geminiSlots = { ...migrated.geminiSlots } as Record<string, unknown>;
+      delete geminiSlots.enquadramentoExtra;
       migrated = { ...migrated, geminiSlots };
     }
     return migrated;
