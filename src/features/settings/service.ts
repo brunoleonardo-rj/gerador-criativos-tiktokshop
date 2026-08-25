@@ -7,6 +7,13 @@ import { DEFAULT_GEMINI_TEMPLATE, validateGeminiTemplate } from "./gemini-templa
 export const DEFAULT_VEO_TEMPLATE = `Create a highly realistic 9:16 vertical video using the provided frame as the visual reference.
 Preserve the identity, product, environment, lighting direction, and overall composition shown in the image, while allowing natural motion and continuity to bring the scene to life. {{continuidade}}
 
+CRITICAL FIDELITY — read this before anything else, violating any of these ruins the shot:
+- The product stays continuously visible in her hand for the entire video, from the first frame to the last. It never disappears, teleports, or reappears out of nowhere — if her hand or arm moves, the product moves with it, always in the same grip, always on screen.
+- The product's shape, color, material, and every visible feature (pockets, buttons, zippers, logos, texture) are pixel-identical to the reference frame in every single frame — no invented or missing details, ever.
+- Her skin is pixel-identical to the reference frame in every single frame — no invented tattoo, mark, scar, or piercing anywhere, at any point in the video.
+- Her hair length, color, and style stay exactly as shown in the reference frame — natural movement only, never regrown, cut, or restyled.
+- Exactly two arms, two hands, five fingers per hand, one head, at all times — never an extra or missing limb, hand, or finger.
+
 PRODUCT: {{produto}}
 ENVIRONMENT: {{ambiente}}
 WARDROBE: {{figurino}}
