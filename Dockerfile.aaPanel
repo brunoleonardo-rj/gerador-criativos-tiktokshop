@@ -2,16 +2,14 @@ FROM node:22.13.1-bookworm-slim AS build
 
 WORKDIR /app
 
-RUN npm install --global pnpm@11.11.0
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends g++ make openssl python3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install --global pnpm@11.11.0
 
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1 \
-    ADMIN_USERNAME=build-user \
-    ADMIN_PASSWORD=build-password \
-    AUTH_SECRET=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
-    TRUSTED_PROXY_SECRET=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
-    SETTINGS_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
     DATA_DIR=/tmp/gerador-criativos-build-data
 
 RUN pnpm install --frozen-lockfile \
