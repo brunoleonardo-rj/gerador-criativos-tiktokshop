@@ -122,13 +122,13 @@ async function readPackageManifest(packageDirectory: string): Promise<{ name?: s
   };
 }
 
-async function findPnpmPackage(store: string, packageName: string, version: string): Promise<string | undefined> {
+async function findPnpmPackage(store: string, packageName: string, version?: string): Promise<string | undefined> {
   for (const entry of await readdir(store, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const candidate = path.join(store, entry.name, "node_modules", packageName);
     if (!(await pathExists(candidate))) continue;
     const manifest = await readPackageManifest(candidate);
-    if (manifest.name === packageName && manifest.version === version) return candidate;
+    if (manifest.name === packageName && (!version || manifest.version === version)) return candidate;
   }
   return undefined;
 }
@@ -159,8 +159,11 @@ async function materializePackageDependencies(nodeModules: string, store: string
     visited.add(key);
     if (!(await pathExists(path.join(packageDirectory, "package.json")))) continue;
 
-    const dependencies = (await readPackageManifest(packageDirectory)).dependencies ?? {};
-    for (const [name, version] of Object.entries(dependencies)) {
+    const manifest = await readPackageManifest(packageDirectory);
+    const dependencies: Array<[string, string | undefined]> = Object.entries(manifest.dependencies ?? {});
+    if (manifest.name === "better-sqlite3") dependencies.push(["bindings", undefined]);
+
+    for (const [name, version] of dependencies) {
       const target = path.join(nodeModules, name);
       if (!(await pathExists(target))) {
         const candidate = await findPnpmPackage(store, name, version);

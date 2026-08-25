@@ -145,4 +145,37 @@ describe("prepareStandalone", () => {
       "utf8",
     )).toBe("module.exports = 'runtime utils';\n");
   });
+
+  it("promotes dynamic native-package dependencies that Next cannot trace", async () => {
+    const { source, root, destination } = await fixture();
+    const sqlite = path.join(source, ".next", "node_modules", "better-sqlite3-traced");
+    const bindings = path.join(source, "node_modules", ".pnpm", "bindings@1.5.0", "node_modules", "bindings");
+    const fileUri = path.join(
+      source,
+      "node_modules",
+      ".pnpm",
+      "file-uri-to-path@1.0.0",
+      "node_modules",
+      "file-uri-to-path",
+    );
+    await mkdir(sqlite, { recursive: true });
+    await mkdir(bindings, { recursive: true });
+    await mkdir(fileUri, { recursive: true });
+    await writeFile(path.join(sqlite, "package.json"), JSON.stringify({ name: "better-sqlite3", version: "13.0.3" }));
+    await writeFile(path.join(bindings, "package.json"), JSON.stringify({
+      name: "bindings",
+      version: "1.5.0",
+      dependencies: { "file-uri-to-path": "1.0.0" },
+    }));
+    await writeFile(path.join(bindings, "index.js"), "module.exports = 'bindings';\n");
+    await writeFile(path.join(fileUri, "package.json"), JSON.stringify({ name: "file-uri-to-path", version: "1.0.0" }));
+    await writeFile(path.join(fileUri, "index.js"), "module.exports = 'file uri';\n");
+
+    await prepareStandalone({ workspaceRoot: root, source, destination });
+
+    expect(await readFile(path.join(destination, ".next", "node_modules", "bindings", "index.js"), "utf8"))
+      .toBe("module.exports = 'bindings';\n");
+    expect(await readFile(path.join(destination, ".next", "node_modules", "file-uri-to-path", "index.js"), "utf8"))
+      .toBe("module.exports = 'file uri';\n");
+  });
 });
