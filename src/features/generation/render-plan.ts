@@ -54,6 +54,43 @@ export function deriveRenderPlan(profile: ProductProfile): RenderPlan {
   };
 }
 
+export interface VeoAnchor {
+  bloco: string;
+  frameFinal: string;
+}
+
+const VEO_ANCHOR_BY_FORMATO: Record<FormatoUso, VeoAnchor> = {
+  vestido: {
+    bloco:
+      "The product is worn on her body exactly as shown in the reference frame for the entire video, from the first frame to the last. It never disappears, shifts to a different body part, or changes how it fits — it stays worn the same way, always visible on screen.",
+    frameFinal: "the product is still worn exactly as it was in the first frame",
+  },
+  ambiente: {
+    bloco:
+      "The product stays continuously visible, resting in the exact same spot and position shown in the reference frame for the entire video, from the first frame to the last. It never disappears, moves on its own, or ends up in her hand — she never picks it up or touches it, it simply stays where it is in the scene.",
+    frameFinal: "the product is still resting in the exact same spot as the first frame, untouched",
+  },
+  manuseado: {
+    bloco:
+      "The product stays continuously visible in her hand for the entire video, from the first frame to the last. It never disappears, teleports, or reappears out of nowhere — if her hand or arm moves, the product moves with it, always in the same grip, always on screen.",
+    frameFinal: "she is still holding the product in the exact same grip as the first frame, never empty-handed",
+  },
+  aplicado_no_corpo: {
+    bloco:
+      "The product stays continuously visible in her hand for the entire video, from the first frame to the last. It never disappears, teleports, or reappears out of nowhere — if her hand or arm moves, the product moves with it, always in the same grip, always on screen.",
+    frameFinal: "she is still holding the product in the exact same grip as the first frame, never empty-handed",
+  },
+  consumido: {
+    bloco:
+      "The product stays continuously visible in her hand for the entire video, from the first frame to the last. It never disappears, teleports, or reappears out of nowhere — if her hand or arm moves, the product moves with it, always in the same grip, always on screen.",
+    frameFinal: "she is still holding the product in the exact same grip as the first frame, never empty-handed",
+  },
+};
+
+export function veoAnchorInstruction(formatoUso: FormatoUso): VeoAnchor {
+  return VEO_ANCHOR_BY_FORMATO[formatoUso];
+}
+
 export function figurinoInstruction(profile: ProductProfile, wardrobeLock: string | null): string {
   if (profile.formatoUso === "vestido" && profile.zonaFoco !== "objeto" && wardrobeLock) return wardrobeLock;
   return "Peça neutra e lisa, de cor sólida, sem estampa e sem logotipo, para não competir com o produto. Evite acessórios refletivos e peças chamativas na zona de foco.";

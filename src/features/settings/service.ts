@@ -8,7 +8,7 @@ export const DEFAULT_VEO_TEMPLATE = `Create a highly realistic 9:16 vertical vid
 Preserve the identity, product, environment, lighting direction, and overall composition shown in the image, while allowing natural motion and continuity to bring the scene to life. {{continuidade}}
 
 CRITICAL FIDELITY — read this before anything else, violating any of these ruins the shot:
-- The product stays continuously visible in her hand for the entire video, from the first frame to the last. It never disappears, teleports, or reappears out of nowhere — if her hand or arm moves, the product moves with it, always in the same grip, always on screen.
+- {{ancoragem_produto}}
 - The product's shape, color, material, and every visible feature (pockets, buttons, zippers, logos, texture) are pixel-identical to the reference frame in every single frame — no invented or missing details, ever.
 - Her skin is pixel-identical to the reference frame in every single frame — no invented tattoo, mark, scar, or piercing anywhere, at any point in the video. If a real tattoo or mark is visible in the reference frame, it only ever shows on exposed skin, properly hidden under clothing wherever fabric covers it — never visible on top of or through the fabric.
 - Her hair length, color, and style stay exactly as shown in the reference frame — natural movement only, never regrown, cut, or restyled.
@@ -69,7 +69,7 @@ GENERAL GUIDELINES:
 - Absolutely no on-screen text, captions, or subtitles of any kind, and no inserted image, logo, sticker, graphic, or animation composited over the footage — the video must be pure camera footage, nothing overlaid on top.
 - The result should feel like a real person recording a real moment — not an ad.
 
-LAST FRAME CHECK (verify before finishing): in the very last frame of the video, she is still holding the product in the exact same grip as the first frame, her clothing still has no printed graphic or decoration beyond the reference frame, and her skin still shows no invented tattoo or mark. The shot must never end with empty hands or a changed appearance.`;
+LAST FRAME CHECK (verify before finishing): in the very last frame of the video, {{ancoragem_frame_final}}, her clothing still has no printed graphic or decoration beyond the reference frame, and her skin still shows no invented tattoo or mark. The shot must never end with a changed appearance.`;
 
 export type PublicSettings = {
   apiKeyConfigured: boolean;

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { creativeBatchFixture, generationInputFixture } from "../../../tests/fixtures/creative-result";
 import { containsMoney, countEmoji, countWords, renderSpeechBeats, validateCreativeBatch } from "./validation";
 import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
+import { DEFAULT_VEO_TEMPLATE } from "@/features/settings/service";
 
 describe("validação editorial", () => {
   it.each([[15, [8, 7, null]], [20, [10, 10, null]], [30, [10, 10, 10]]])("aceita duração %s apenas com segmentos corretos", (duration, segmentSeconds) => {
@@ -120,6 +121,32 @@ describe("validação editorial", () => {
       DEFAULT_GEMINI_TEMPLATE,
     );
     expect(manuseado.creatives[0].promptGemini).toContain("em relação à mão");
+  });
+
+  it("trava o produto na mão, no corpo ou no ambiente no Prompt VEO conforme o formatoUso", () => {
+    const handheld = validateCreativeBatch(
+      generationInputFixture({ productProfile: { formatoUso: "manuseado", zonaFoco: "maos", detalheCritico: null } }),
+      creativeBatchFixture(),
+      DEFAULT_VEO_TEMPLATE,
+    );
+    expect(handheld.creatives[0].veoPrompts.trecho1).toContain("continuously visible in her hand");
+    expect(handheld.creatives[0].veoPrompts.trecho1).toContain("she is still holding the product in the exact same grip");
+
+    const worn = validateCreativeBatch(
+      generationInputFixture({ productProfile: { formatoUso: "vestido", zonaFoco: "corpo_inteiro", detalheCritico: null } }),
+      creativeBatchFixture(),
+      DEFAULT_VEO_TEMPLATE,
+    );
+    expect(worn.creatives[0].veoPrompts.trecho1).toContain("worn on her body exactly as shown");
+    expect(worn.creatives[0].veoPrompts.trecho1).not.toContain("continuously visible in her hand");
+
+    const ambiente = validateCreativeBatch(
+      generationInputFixture({ productProfile: { formatoUso: "ambiente", zonaFoco: "objeto", detalheCritico: null } }),
+      creativeBatchFixture(),
+      DEFAULT_VEO_TEMPLATE,
+    );
+    expect(ambiente.creatives[0].veoPrompts.trecho1).toContain("she never picks it up or touches it");
+    expect(ambiente.creatives[0].veoPrompts.trecho1).not.toContain("continuously visible in her hand");
   });
 
   it("ignora o figurino livre do modelo no Prompt VEO e usa o mesmo figurino derivado do Prompt Gemini", () => {

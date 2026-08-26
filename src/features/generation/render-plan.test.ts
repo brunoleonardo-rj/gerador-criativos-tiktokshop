@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveRenderPlan, figurinoInstruction, type FormatoUso, type ZonaFoco } from "./render-plan";
+import { deriveRenderPlan, figurinoInstruction, veoAnchorInstruction, type FormatoUso, type ZonaFoco } from "./render-plan";
 
 describe("deriveRenderPlan", () => {
   it.each([
@@ -75,5 +75,28 @@ describe("figurinoInstruction", () => {
   it("usa roupa neutra mesmo com formatoUso vestido quando a zona é objeto", () => {
     const instrucao = figurinoInstruction({ formatoUso: "vestido", zonaFoco: "objeto", detalheCritico: null }, "Vestido midi azul, decote V.");
     expect(instrucao).toContain("neutra");
+  });
+});
+
+describe("veoAnchorInstruction", () => {
+  it.each(["manuseado", "aplicado_no_corpo", "consumido"] as FormatoUso[])("trava o produto na mão para formatoUso=%s", (formatoUso) => {
+    const anchor = veoAnchorInstruction(formatoUso);
+    expect(anchor.bloco).toContain("in her hand");
+    expect(anchor.frameFinal).toContain("holding the product");
+  });
+
+  it("trava o produto vestido no corpo, não na mão", () => {
+    const anchor = veoAnchorInstruction("vestido");
+    expect(anchor.bloco).not.toContain("in her hand");
+    expect(anchor.bloco).toContain("worn on her body");
+    expect(anchor.frameFinal).toContain("still worn");
+  });
+
+  it("trava o produto apoiado no ambiente, sem contato com a mão", () => {
+    const anchor = veoAnchorInstruction("ambiente");
+    expect(anchor.bloco).not.toContain("continuously visible in her hand");
+    expect(anchor.bloco).toContain("she never picks it up or touches it");
+    expect(anchor.frameFinal).toContain("resting in the exact same spot");
+    expect(anchor.frameFinal).not.toContain("holding");
   });
 });
