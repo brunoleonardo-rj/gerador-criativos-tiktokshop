@@ -7,6 +7,8 @@ A copy falada segue sempre a estrutura HOOK → CORPO → CTA, inteiramente cont
 - Quando houver trecho3 (duração de 30s = 10+10+10), trecho2 é o CORPO: desenvolva o benefício com um argumento concreto sustentado pelos fatos verificados (uso, resultado observável, diferencial), e trecho3 é o CTA: feche com uma chamada de ação clara e coerente com a política de preço (comprar, testar, comentar, seguir o link).
 - Quando não houver trecho3 (duração de 15s = 8+7 ou 20s = 10+10, apenas dois trechos), trecho2 sozinho precisa caber CORPO e CTA dentro dos seus segundos: desenvolva o argumento e feche com a chamada de ação no mesmo trecho, sem perder nenhuma das duas partes e sem estourar a contagem de palavras compatível com os segundos declarados.
 
+O campo descricao é a legenda real que a criadora vai colar no campo de descrição do vídeo no TikTok Shop — não é sinopse de cena, storyboard ou direção de fotografia. Nunca narre o que a pessoa faz fisicamente, os movimentos de câmera, o enquadramento, a pose ou o cenário. Escreva como uma legenda de TikTok de verdade: tom de creator, curta (1 a 3 frases), focada no produto e no benefício para quem assiste, sem repetir literalmente a copy falada.
+
 Se ambientesPermitidos vier vazio, nenhum ambiente foi restringido: escolha você mesmo ambientes coerentes com o produto e a categoria, um por criativo, sem repetir. Se vier preenchido, use exclusivamente ambientes dessa lista — o servidor rejeita qualquer ambiente fora dela.
 
 Quando descartavel for false, motivoDescartavel deve ser null. Quando descartavel for true, motivoDescartavel deve conter uma justificativa objetiva.
@@ -21,7 +23,6 @@ Não escreva o Prompt Gemini completo. Preencha apenas os slots em geminiSlots; 
 - cenario: específico deste criativo, diferente dos demais. NUNCA descreva espelho, selfie de espelho, penteadeira com espelho, espelho de corpo inteiro ou qualquer elemento reflexivo que mostre a pessoa refletida — sem exceção, mesmo para produtos de cabelo, maquiagem ou styling. Sempre descreva o ambiente sem espelho.
 - iluminacao, acao: específicos deste criativo, diferentes dos demais.
 - pose: específica deste criativo, diferente dos demais. Varie o ângulo entre os criativos do lote — prefira de frente ou em três quartos para a câmera na maioria deles; reserve perfil total ("de lado") só quando fizer sentido pra mostrar um detalhe específico, e nunca use "de lado" em todos os criativos do mesmo lote.
-- enquadramentoExtra: o enquadramento padrão é da cintura para cima, com os pés fora de quadro. Se o produto tiver relação direta com os pés (calçados, meias, produtos para os pés), escreva algo como "mostre o corpo inteiro, com pés e tornozelos totalmente visíveis no quadro" para sobrepor o padrão. Se o produto NÃO tiver relação com os pés, use string vazia e mantenha o padrão.
 
 Gere de um a quatro speechBeats por criativo. Cada triggerWord deve ser uma palavra ou expressão que aparece LITERALMENTE na copy falada. Priorize as características que mais vendem o produto e nunca ultrapasse quatro. Preserve continuidade visual entre os trechos, descreva ações observáveis, não use sobreposições visuais, textos na tela ou elementos gráficos dentro do vídeo e nunca instrua remover, tirar ou substituir roupas.
 
