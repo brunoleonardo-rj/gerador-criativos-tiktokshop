@@ -64,8 +64,11 @@ export function buildGeminiPrompt(template: string, slots: GeminiSlots, profile:
     ? `CALÇADO: ${slots.calcado} IGNORE o calçado das fotos de identidade — o calçado é definido apenas por esta seção.\n\n`
     : "";
   const blocoInteracao = plan.blocos.interacaoProduto
-    ? `AÇÃO E INTERAÇÃO COM O PRODUTO:\n${slots.acao}\n` +
-      "O produto aparece em contato real com a superfície ou parte do corpo em que é usado — o material se acomoda ao redor dele, sem atravessar o objeto e sem flutuar. O produto e o rosto ficam nítidos no mesmo plano de foco. Um único exemplar do produto na cena, em proporção correta em relação à mão.\n\n"
+    ? profile.formatoUso === "ambiente"
+      ? `AÇÃO E INTERAÇÃO COM O PRODUTO:\n${slots.acao}\n` +
+        "O produto permanece apoiado e estável sobre uma superfície da cena — a pessoa não segura nem toca o produto neste quadro, as mãos ficam livres. Um único exemplar do produto na cena, em proporção correta em relação ao ambiente ao redor.\n\n"
+      : `AÇÃO E INTERAÇÃO COM O PRODUTO:\n${slots.acao}\n` +
+        "O produto aparece em contato real com a superfície ou parte do corpo em que é usado — o material se acomoda ao redor dele, sem atravessar o objeto e sem flutuar. O produto e o rosto ficam nítidos no mesmo plano de foco. Um único exemplar do produto na cena, em proporção correta em relação à mão.\n\n"
     : `AÇÃO:\n${slots.acao}\n\n`;
   return renderGeminiTemplate(template, {
     identidade_ugc: slots.identidadeUgc,

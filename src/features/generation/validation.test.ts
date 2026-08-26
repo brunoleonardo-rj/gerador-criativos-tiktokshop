@@ -102,6 +102,26 @@ describe("validação editorial", () => {
     expect(handheld.creatives[0].promptGemini).toContain("folga acima da cabeça");
   });
 
+  it("não menciona a mão no bloco de interação quando o produto fica apoiado no ambiente", () => {
+    const ambiente = validateCreativeBatch(
+      generationInputFixture({ productProfile: { formatoUso: "ambiente", zonaFoco: "objeto", detalheCritico: null } }),
+      creativeBatchFixture(),
+      "{{copy_trecho}}",
+      DEFAULT_GEMINI_TEMPLATE,
+    );
+    expect(ambiente.creatives[0].promptGemini).toContain("AÇÃO E INTERAÇÃO COM O PRODUTO:");
+    expect(ambiente.creatives[0].promptGemini).not.toContain("em relação à mão");
+    expect(ambiente.creatives[0].promptGemini).toContain("a pessoa não segura nem toca o produto");
+
+    const manuseado = validateCreativeBatch(
+      generationInputFixture({ productProfile: { formatoUso: "manuseado", zonaFoco: "maos", detalheCritico: null } }),
+      creativeBatchFixture(),
+      "{{copy_trecho}}",
+      DEFAULT_GEMINI_TEMPLATE,
+    );
+    expect(manuseado.creatives[0].promptGemini).toContain("em relação à mão");
+  });
+
   it("ignora o figurino livre do modelo no Prompt VEO e usa o mesmo figurino derivado do Prompt Gemini", () => {
     const handheld = validateCreativeBatch(
       generationInputFixture({ productProfile: { formatoUso: "manuseado", zonaFoco: "maos", detalheCritico: null } }),
