@@ -1,6 +1,6 @@
 import { renderVeoTemplate } from "@/features/settings/veo-template";
 import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
-import { buildGeminiPrompt, deriveRenderPlan, type ProductProfile } from "./render-plan";
+import { buildGeminiPrompt, deriveRenderPlan, figurinoInstruction, type ProductProfile } from "./render-plan";
 import { creativeBatchSchema, generationInputSchema, type CreativeBatch, type GenerationInput, type SpeechBeat } from "./schema";
 
 export type IssueSeverity = "warning" | "block";
@@ -43,7 +43,7 @@ function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoN
     try {
       if (promptGemini === null) throw new Error("Gemini prompt unavailable");
       const segmentBeats = creative.speechBeats.filter((beat) => normalizeKey(segment.texto).includes(normalizeKey(beat.triggerWord)));
-      veoPrompts[key] = renderVeoTemplate(veoTemplate, { produto: produtoNormalizado, copy_trecho: segment.texto, pov: creative.pov.texto, ambiente: creative.ambiente, figurino: creative.figurino, pose: creative.pose, prompt_gemini: promptGemini, speech_beats: renderSpeechBeats(segmentBeats), continuidade: index > 0 ? CONTINUATION_NOTE : "" });
+      veoPrompts[key] = renderVeoTemplate(veoTemplate, { produto: produtoNormalizado, copy_trecho: segment.texto, pov: creative.pov.texto, ambiente: creative.ambiente, figurino: figurinoInstruction(profile, creative.geminiSlots.wardrobeLock), pose: creative.pose, prompt_gemini: promptGemini, speech_beats: renderSpeechBeats(segmentBeats), continuidade: index > 0 ? CONTINUATION_NOTE : "" });
     } catch {
       add(issues, "VEO_TEMPLATE_INVALID", "block", `veoPrompts.${key}`, "O template VEO possui variável inválida ou não resolvida.");
     }

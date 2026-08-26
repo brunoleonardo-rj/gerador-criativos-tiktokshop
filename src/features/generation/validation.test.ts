@@ -101,6 +101,23 @@ describe("validação editorial", () => {
     expect(handheld.creatives[0].promptGemini).toContain("AÇÃO E INTERAÇÃO COM O PRODUTO:");
     expect(handheld.creatives[0].promptGemini).toContain("folga acima da cabeça");
   });
+
+  it("ignora o figurino livre do modelo no Prompt VEO e usa o mesmo figurino derivado do Prompt Gemini", () => {
+    const handheld = validateCreativeBatch(
+      generationInputFixture({ productProfile: { formatoUso: "manuseado", zonaFoco: "maos", detalheCritico: null } }),
+      creativeBatchFixture({ figurino: "camiseta bege" }),
+      "WARDROBE: {{figurino}}",
+    );
+    expect(handheld.creatives[0].veoPrompts.trecho1).not.toContain("camiseta bege");
+    expect(handheld.creatives[0].veoPrompts.trecho1).toContain("Peça neutra e lisa");
+
+    const dressed = validateCreativeBatch(
+      generationInputFixture({ productProfile: { formatoUso: "vestido", zonaFoco: "corpo_inteiro", detalheCritico: null } }),
+      creativeBatchFixture({ figurino: "camiseta bege" }),
+      "WARDROBE: {{figurino}}",
+    );
+    expect(dressed.creatives[0].veoPrompts.trecho1).toContain("Camiseta bege casual sem estampas.");
+  });
   it("bloqueia beat cuja palavra-gatilho não está na copy falada", () => {
     const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture({ speechBeats: [{ triggerWord: "zíper", cameraMove: "push-in", gesture: "point", visibleResult: "zipper visible" }] }), "{{copy_trecho}}", DEFAULT_GEMINI_TEMPLATE);
     expect(report.creatives[0].issues).toContainEqual(expect.objectContaining({ code: "SPEECH_BEAT_ORPHAN", severity: "block", field: "speechBeats" }));
