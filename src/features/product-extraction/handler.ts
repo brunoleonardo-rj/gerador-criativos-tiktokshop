@@ -67,7 +67,7 @@ export function makeProductExtractionHandler(deps: Dependencies) {
     try {
       await deps.requireSession(request);
     } catch {
-      return new Response(null, { status: 401 });
+      return Response.json({ code: "SESSION_EXPIRED", message: "Sessão expirada." }, { status: 401 });
     }
 
     try {

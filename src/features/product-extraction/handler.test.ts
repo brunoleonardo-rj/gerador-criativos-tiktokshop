@@ -135,7 +135,7 @@ describe("makeProductExtractionHandler", () => {
     )(await multipartRequest(sourceFiles(1)));
 
     expect(result.status).toBe(401);
-    expect(await result.text()).toBe("");
+    expect(await result.json()).toEqual({ code: "SESSION_EXPIRED", message: "Sessão expirada." });
     expect(extract).not.toHaveBeenCalled();
   });
 

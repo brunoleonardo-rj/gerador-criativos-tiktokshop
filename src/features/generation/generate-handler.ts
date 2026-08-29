@@ -48,7 +48,7 @@ function fingerprint(input: unknown, images: GenerationImage[]): string {
 export function makeGenerateHandler(deps: Dependencies) {
   const attempts = new Map<string, Attempt>();
   return async (request: Request): Promise<Response> => {
-    try { await deps.requireSession(request); } catch { return new Response(null, { status: 401 }); }
+    try { await deps.requireSession(request); } catch { return Response.json({ code: "SESSION_EXPIRED", message: "Sessão expirada." }, { status: 401 }); }
     try { deps.enforceSameOrigin(request); } catch { return Response.json({ code: "INVALID_REQUEST", message: "Solicitação inválida." }, { status: 403 }); }
     if (request.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
     let form: FormData;
