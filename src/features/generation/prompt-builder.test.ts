@@ -18,3 +18,32 @@ describe("buildAnthropicPrompt", () => {
     expect(prompt.messages[0].content[0]).toMatchObject({ type: "image", source: { type: "base64", media_type: "image/webp", data: "aGVsbG8=" } });
   });
 });
+
+describe("ponto de cache", () => {
+  const library = {
+    playbook: ["regra estável"],
+    hashtagPatterns: ["#padrao"],
+    creatives: [],
+  };
+  const build = (creatives: typeof library.creatives) =>
+    buildAnthropicPrompt({ input: generationInputFixture(), library: { ...library, creatives }, images: [] });
+
+  it("marca o bloco estável, não o que muda por produto", () => {
+    const { system } = build([]);
+
+    expect(system).toHaveLength(3);
+    expect(system[0].cache_control).toBeUndefined();
+    expect(system[1].cache_control).toEqual({ type: "ephemeral" });
+    expect(system[2].cache_control).toBeUndefined();
+    expect(system[1].text).toContain("regra estável");
+    expect(system[1].text).toContain("#padrao");
+  });
+
+  it("mantém o prefixo cacheado idêntico quando a seleção de criativos muda", () => {
+    const a = build([]);
+    const b = build([{ id: "x", produto: "Outro", mecanismo: "m", texto: "t" } as never]);
+
+    expect(b.system[1].text).toBe(a.system[1].text);
+    expect(b.system[2].text).not.toBe(a.system[2].text);
+  });
+});

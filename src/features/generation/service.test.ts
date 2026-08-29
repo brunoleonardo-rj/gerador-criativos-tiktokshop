@@ -17,6 +17,33 @@ describe("GenerationService", () => {
     expect(result.settingsUpdatedAt).toBe("2026-01-01T00:00:00.000Z");
   });
 
+  it("records what the generation consumed", async () => {
+    const recorded: unknown[] = [];
+    const input = generationInputFixture();
+
+    await new GenerationService(settings(), library, port(), { record: async (entry) => { recorded.push(entry); } })
+      .generate({ input, images: [{ role: "product", mediaType: "image/png", data: "AAA" }] }, new AbortController().signal);
+
+    expect(recorded).toEqual([{
+      model: "claude-test",
+      creativeCount: input.quantidadeCriativos,
+      imageCount: 1,
+      inputTokens: 1,
+      outputTokens: 2,
+      cacheReadTokens: 3,
+      cacheWriteTokens: 4,
+    }]);
+  });
+
+  it("still returns the batch when recording usage fails", async () => {
+    const failing = { record: async () => { throw new Error("banco fora do ar"); } };
+
+    const result = await new GenerationService(settings(), library, port(), failing)
+      .generate({ input: generationInputFixture(), images: [] }, new AbortController().signal);
+
+    expect(result.creatives).not.toHaveLength(0);
+  });
+
   it("maps missing API configuration safely", async () => {
     await expect(new GenerationService({ getGenerationSettings: async () => { throw new Error("missing"); } }, library, port()).generate({ input: generationInputFixture(), images: [] }, new AbortController().signal)).rejects.toMatchObject({ code: "API_NOT_CONFIGURED" });
   });

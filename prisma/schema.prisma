@@ -42,3 +42,21 @@ model LibraryVersion {
 
   @@index([status])
 }
+
+// Consumo por geração. accountId já existe para o dia em que houver contas;
+// hoje fica nulo e serve para medir custo e margem reais.
+model GenerationUsage {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  accountId        String?
+  model            String
+  creativeCount    Int
+  imageCount       Int
+  inputTokens      Int
+  outputTokens     Int
+  cacheReadTokens  Int
+  cacheWriteTokens Int
+
+  @@index([createdAt])
+  @@index([accountId])
+}
