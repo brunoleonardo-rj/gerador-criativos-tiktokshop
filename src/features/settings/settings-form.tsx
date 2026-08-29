@@ -8,7 +8,7 @@ import { LibrarySettings } from "@/features/library/library-settings";
 const MODEL_PRESETS = [
   { value: "claude-opus-5", label: "Opus 5 — mais capaz" },
   { value: "claude-sonnet-5", label: "Sonnet 5 — recomendado" },
-  { value: "claude-haiku-4-5-20251001", label: "Haiku 4.5 — mais rápido e barato" },
+  { value: "claude-haiku-4-5", label: "Haiku 4.5 — mais rápido e barato" },
   { value: "claude-fable-5", label: "Fable 5" },
 ] as const;
 

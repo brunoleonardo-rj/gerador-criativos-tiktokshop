@@ -277,6 +277,7 @@ const stepFields: (keyof WizardFormValues)[][] = [
 const errorMessages: Record<string, string> = {
   API_NOT_CONFIGURED: "A API ainda não foi configurada.",
   INVALID_API_KEY: "A credencial Anthropic não é válida.",
+  MODEL_NOT_FOUND: "O modelo configurado não existe ou não está disponível para esta credencial.",
   RATE_LIMITED: "O limite de uso foi atingido. Tente novamente em instantes.",
   REFUSAL: "A análise foi recusada. Troque as imagens e tente novamente.",
   TIMEOUT: "A análise demorou mais que o esperado.",
@@ -294,6 +295,7 @@ const errorMessages: Record<string, string> = {
 const submissionErrorMessages: Record<string, string> = {
   API_NOT_CONFIGURED: "A API ainda não foi configurada.",
   INVALID_API_KEY: "A credencial Anthropic não é válida.",
+  MODEL_NOT_FOUND: "O modelo configurado não existe ou não está disponível para esta credencial. Abra Configurações e selecione outro modelo.",
   RATE_LIMITED: "O limite de uso foi atingido. Tente novamente em instantes.",
   REFUSAL: "A geração foi recusada. Ajuste o briefing e tente novamente.",
   TIMEOUT: "A geração demorou mais que o esperado.",
@@ -639,7 +641,7 @@ export function GenerationWizard({ services = defaultServices }: { services?: Wi
 
         {visibleSubmissionError && <div className={styles.submissionError} role="alert">
           <p>{visibleSubmissionError}</p>
-          {visibleSubmissionError === submissionErrorMessages.API_NOT_CONFIGURED
+          {visibleSubmissionError === submissionErrorMessages.API_NOT_CONFIGURED || visibleSubmissionError === submissionErrorMessages.MODEL_NOT_FOUND
             ? <a className={styles.inlineLink} href="/configuracoes">Abrir Configurações</a>
             : visibleSubmissionError !== submissionErrorMessages.INVALID_MODEL_OUTPUT && visibleSubmissionError !== submissionErrorMessages.UPSTREAM_UNAVAILABLE
               ? <button className={styles.inlineButton} type="button" onClick={() => void submit()}>Tentar novamente</button>

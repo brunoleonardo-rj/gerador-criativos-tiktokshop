@@ -34,7 +34,7 @@ function uploadFailureResponse(error: unknown): Response {
   );
 }
 function errorResponse(code: GenerationErrorCode): Response {
-  const status: Record<GenerationErrorCode, number> = { API_NOT_CONFIGURED: 409, INVALID_API_KEY: 401, RATE_LIMITED: 429, REFUSAL: 422, TIMEOUT: 504, INVALID_MODEL_OUTPUT: 502, UPSTREAM_UNAVAILABLE: 503 };
+  const status: Record<GenerationErrorCode, number> = { API_NOT_CONFIGURED: 409, INVALID_API_KEY: 401, MODEL_NOT_FOUND: 409, RATE_LIMITED: 429, REFUSAL: 422, TIMEOUT: 504, INVALID_MODEL_OUTPUT: 502, UPSTREAM_UNAVAILABLE: 503 };
   return Response.json({ code, message: "Não foi possível gerar os criativos." }, { status: status[code] });
 }
 function attemptResponse(outcome: AttemptOutcome): Response {

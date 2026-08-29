@@ -35,8 +35,8 @@ describe("SettingsForm", () => {
     await user.click(screen.getByRole("tab", { name: "Modelo" }));
     expect(screen.getByLabelText("Modelos comuns")).toHaveValue("claude-sonnet-5");
 
-    await user.selectOptions(screen.getByLabelText("Modelos comuns"), "claude-haiku-4-5-20251001");
-    expect(screen.getByLabelText("Modelo Anthropic")).toHaveValue("claude-haiku-4-5-20251001");
+    await user.selectOptions(screen.getByLabelText("Modelos comuns"), "claude-haiku-4-5");
+    expect(screen.getByLabelText("Modelo Anthropic")).toHaveValue("claude-haiku-4-5");
 
     await user.clear(screen.getByLabelText("Modelo Anthropic"));
     await user.type(screen.getByLabelText("Modelo Anthropic"), "claude-sonnet-4-5-20250929");

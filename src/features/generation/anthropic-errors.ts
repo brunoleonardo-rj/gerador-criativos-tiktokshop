@@ -1,4 +1,4 @@
-export type GenerationErrorCode = "API_NOT_CONFIGURED" | "INVALID_API_KEY" | "RATE_LIMITED" | "REFUSAL" | "TIMEOUT" | "INVALID_MODEL_OUTPUT" | "UPSTREAM_UNAVAILABLE";
+export type GenerationErrorCode = "API_NOT_CONFIGURED" | "INVALID_API_KEY" | "MODEL_NOT_FOUND" | "RATE_LIMITED" | "REFUSAL" | "TIMEOUT" | "INVALID_MODEL_OUTPUT" | "UPSTREAM_UNAVAILABLE";
 
 export class GenerationFailure extends Error {
   constructor(readonly code: GenerationErrorCode) {
@@ -12,6 +12,7 @@ export function failureForAnthropic(error: unknown, signal: AbortSignal): Genera
   const status = typeof error === "object" && error !== null && "status" in error ? (error as { status?: unknown }).status : undefined;
   if (status === 400) return new GenerationFailure("INVALID_MODEL_OUTPUT");
   if (status === 401 || status === 403) return new GenerationFailure("INVALID_API_KEY");
+  if (status === 404) return new GenerationFailure("MODEL_NOT_FOUND");
   if (status === 429) return new GenerationFailure("RATE_LIMITED");
   return new GenerationFailure("UPSTREAM_UNAVAILABLE");
 }

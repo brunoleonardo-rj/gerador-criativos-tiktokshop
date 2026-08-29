@@ -28,6 +28,7 @@ const sourceImageSpecs = {
 const extractionFailureStatuses: Record<GenerationErrorCode, number> = {
   API_NOT_CONFIGURED: 409,
   INVALID_API_KEY: 401,
+  MODEL_NOT_FOUND: 409,
   RATE_LIMITED: 429,
   REFUSAL: 422,
   TIMEOUT: 504,
