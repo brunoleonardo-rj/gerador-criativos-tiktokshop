@@ -1,7 +1,7 @@
 import { authenticateAdmin, type AdminCredentials } from "./credentials";
 import { LoginRateLimiter } from "./rate-limit";
 import { enforceSameOrigin } from "./request-guard";
-import { createSessionToken, SESSION_COOKIE, SESSION_DURATION_SECONDS } from "./session";
+import { createSessionToken, sessionCookieValue } from "./session";
 
 const FAILURE_MESSAGE = "Credenciais inválidas ou acesso temporariamente bloqueado";
 const MAX_LOGIN_JSON_BYTES = 16 * 1024;
@@ -104,11 +104,10 @@ export function makeLoginHandler(deps: {
     deps.globalLimiter.reset("global");
     const now = deps.now?.() ?? new Date();
     const token = await createSessionToken({ username: deps.expected.username, now }, deps.secret);
-    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
     return new Response(null, {
       status: 204,
       headers: {
-        "set-cookie": `${SESSION_COOKIE}=${token}; Path=/; Max-Age=${SESSION_DURATION_SECONDS}; HttpOnly; SameSite=Strict${secure}`,
+        "set-cookie": sessionCookieValue(token, process.env.NODE_ENV === "production"),
       },
     });
   };

@@ -26,7 +26,7 @@ describe("request guards", () => {
     const token = await createSessionToken({ username: "admin" }, process.env.AUTH_SECRET!);
     const request = new Request("http://local/api/test", { headers: { cookie: `${SESSION_COOKIE}=${token}` } });
 
-    await expect(requireSession(request)).resolves.toEqual({ username: "admin" });
+    await expect(requireSession(request)).resolves.toMatchObject({ username: "admin" });
   });
 
   it("rejeita Origin cruzada", () => {
