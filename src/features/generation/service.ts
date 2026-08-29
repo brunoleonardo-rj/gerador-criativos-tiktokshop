@@ -7,6 +7,17 @@ import { buildAnthropicPrompt, type GenerationImage } from "./prompt-builder";
 import type { GenerationInput } from "./schema";
 import { validateCreativeBatch, type GenerationEnvelope } from "./validation";
 
+// Sem isto, qualquer defeito nosso vira "A Anthropic não concluiu" sem deixar rastro no log.
+export function warnUnexpectedFailure(stage: string, error: unknown): void {
+  const diagnostic = {
+    stage,
+    name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message : String(error),
+    at: error instanceof Error ? error.stack?.split("\n")[1]?.trim() ?? null : null,
+  };
+  console.error(`[generation] unexpected failure ${JSON.stringify(diagnostic)}`);
+}
+
 type SettingsApi = Pick<SettingsService, "getGenerationSettings">;
 type LibraryApi = Pick<LibraryService, "getActiveSnapshot">;
 export class GenerationService {
@@ -19,6 +30,10 @@ export class GenerationService {
       const prompt = buildAnthropicPrompt({ input, library: selectLibraryContext(snapshot, { produto: input.nomeProduto, categoria: input.categoria }), images });
       const result = await this.anthropic.generate(settings.apiKey, { model: settings.model, ...prompt }, signal);
       return validateCreativeBatch(input, result.batch, settings.veoTemplate, settings.geminiTemplate, settings.updatedAt.toISOString());
-    } catch (error) { if (error instanceof GenerationFailure) throw error; throw new GenerationFailure("UPSTREAM_UNAVAILABLE"); }
+    } catch (error) {
+      if (error instanceof GenerationFailure) throw error;
+      warnUnexpectedFailure("service", error);
+      throw new GenerationFailure("UPSTREAM_UNAVAILABLE");
+    }
   }
 }

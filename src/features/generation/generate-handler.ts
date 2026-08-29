@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { generationInputSchema } from "./schema";
-import type { GenerationService } from "./service";
+import { warnUnexpectedFailure, type GenerationService } from "./service";
 import { GenerationFailure, type GenerationErrorCode } from "./anthropic-port";
 import type { GenerationImage } from "./prompt-builder";
 import {
@@ -71,7 +71,10 @@ export function makeGenerateHandler(deps: Dependencies) {
     const execute = async (): Promise<AttemptOutcome> => {
       const signal = AbortSignal.timeout(GENERATION_TIMEOUT_MS);
       try { return { ok: true, value: await deps.service.generate({ input, images }, signal) }; }
-      catch (error) { return { ok: false, code: error instanceof GenerationFailure ? error.code : "UPSTREAM_UNAVAILABLE" }; }
+      catch (error) {
+        if (!(error instanceof GenerationFailure)) warnUnexpectedFailure("handler", error);
+        return { ok: false, code: error instanceof GenerationFailure ? error.code : "UPSTREAM_UNAVAILABLE" };
+      }
     };
     if (!requestId) return attemptResponse(await execute());
 

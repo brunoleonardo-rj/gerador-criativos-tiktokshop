@@ -33,7 +33,7 @@ function warnUpstreamUnavailable(error: unknown): void {
 }
 
 export class AnthropicSdkAdapter implements AnthropicPort {
-  constructor(private readonly makeClient: (apiKey: string) => Client = (apiKey) => new Anthropic({ apiKey, maxRetries: 0 })) {}
+  constructor(private readonly makeClient: (apiKey: string) => Client = (apiKey) => new Anthropic({ apiKey, maxRetries: 2 })) {}
   async generate(apiKey: string, request: AnthropicRequest, signal: AbortSignal): Promise<AnthropicResult> {
     try {
       const response = await this.makeClient(apiKey).messages.create({ model: request.model, max_tokens: 32_000, system: request.system, messages: request.messages, output_config: { format: getAnthropicOutputFormat() } }, { signal, timeout: 20 * 60 * 1000 });

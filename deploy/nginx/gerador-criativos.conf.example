@@ -32,6 +32,9 @@ server {
 
     location = /api/generate {
         client_max_body_size 60m;
+        # Acima de GENERATION_TIMEOUT_MS (300s) para o timeout do app vencer e responder JSON.
+        proxy_read_timeout 360s;
+        proxy_send_timeout 360s;
         proxy_pass http://127.0.0.1:3000;
     }
 

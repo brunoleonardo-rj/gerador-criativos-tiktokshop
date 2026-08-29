@@ -13,6 +13,7 @@ describe("nginx proxy example", () => {
     expect(config).toMatch(/location\s+=\s+\/api\/auth\/login\s*\{[^}]*client_max_body_size\s+16k;/);
     expect(config).toMatch(/location\s+=\s+\/api\/settings\s*\{[^}]*client_max_body_size\s+24k;/);
     expect(config).toMatch(/location\s+=\s+\/api\/generate\s*\{[^}]*client_max_body_size\s+60m;/);
+    expect(config).toMatch(/location\s+=\s+\/api\/generate\s*\{[^}]*proxy_read_timeout\s+360s;/);
     expect(config).toMatch(/location\s+=\s+\/api\/library\/import\s*\{[^}]*client_max_body_size\s+60m;/);
     expect(config).toMatch(/proxy_read_timeout\s+120s;/);
     expect(config).toMatch(/proxy_set_header\s+X-Trusted-Client-IP\s+\$remote_addr;/);

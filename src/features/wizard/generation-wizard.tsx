@@ -237,7 +237,9 @@ export interface WizardServices {
 
 async function responseCode(response: Response): Promise<string> {
   const body = await response.json().catch(() => null) as { code?: string } | null;
-  return body?.code ?? "UPSTREAM_UNAVAILABLE";
+  if (body?.code) return body.code;
+  // Resposta sem JSON não veio do app: quem respondeu foi a borda cortando a conexão.
+  return response.status === 502 || response.status === 504 ? "EDGE_TIMEOUT" : "UPSTREAM_UNAVAILABLE";
 }
 
 async function fetchProductExtraction(form: FormData): Promise<ProductExtraction> {
@@ -247,7 +249,9 @@ async function fetchProductExtraction(form: FormData): Promise<ProductExtraction
 }
 
 async function fetchGeneration(form: FormData): Promise<GenerationEnvelope> {
-  const response = await fetch("/api/generate", { method: "POST", body: form });
+  let response: Response;
+  try { response = await fetch("/api/generate", { method: "POST", body: form }); }
+  catch { throw new Error("NETWORK_FAILED"); }
   if (response.ok) return response.json();
   throw new Error(await responseCode(response));
 }
@@ -284,6 +288,8 @@ const errorMessages: Record<string, string> = {
   IMAGE_LOAD_FAILED: "Não foi possível carregar as imagens salvas. Recarregue a página e tente novamente.",
   IMAGE_SAVE_FAILED: "Não foi possível salvar a alteração das imagens. Tente novamente.",
   STALE_ANALYSIS: "As imagens mudaram. Analise novamente antes de continuar.",
+  EDGE_TIMEOUT: "O servidor encerrou a conexão antes da resposta chegar.",
+  NETWORK_FAILED: "A conexão caiu durante a requisição.",
 };
 const submissionErrorMessages: Record<string, string> = {
   API_NOT_CONFIGURED: "A API ainda não foi configurada.",
@@ -293,6 +299,8 @@ const submissionErrorMessages: Record<string, string> = {
   TIMEOUT: "A geração demorou mais que o esperado.",
   INVALID_MODEL_OUTPUT: "A resposta não pôde ser recuperada. Para evitar nova cobrança, não gere novamente com os mesmos dados. Reduza a quantidade de criativos antes de tentar uma vez.",
   UPSTREAM_UNAVAILABLE: "A Anthropic não concluiu esta solicitação. Esta tentativa está protegida contra nova cobrança por 5 minutos. Aguarde antes de alterar os dados e gerar novamente.",
+  EDGE_TIMEOUT: "O servidor encerrou a conexão antes de a geração terminar, mas ela pode ter concluído. Clique em Tentar novamente SEM alterar nenhum dado para recuperar o resultado — isso não gera nova cobrança.",
+  NETWORK_FAILED: "A conexão caiu durante a geração, que pode ter concluído no servidor. Clique em Tentar novamente SEM alterar nenhum dado para recuperar o resultado — isso não gera nova cobrança.",
 };
 const emptyWarnings: string[] = [];
 
