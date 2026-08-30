@@ -30,6 +30,12 @@ server {
         proxy_pass http://127.0.0.1:3000;
     }
 
+    location = /api/product-extraction {
+        # Acima de MAX_PRODUCT_EXTRACTION_BODY_BYTES (26 MiB) para o limite do app vencer e responder JSON.
+        client_max_body_size 26m;
+        proxy_pass http://127.0.0.1:3000;
+    }
+
     location = /api/generate {
         client_max_body_size 60m;
         # Acima de GENERATION_TIMEOUT_MS (300s) para o timeout do app vencer e responder JSON.

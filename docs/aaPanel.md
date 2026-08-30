@@ -70,13 +70,18 @@ server {
         proxy_pass http://127.0.0.1:3000;
     }
 
+    location = /api/product-extraction {
+        client_max_body_size 26m;
+        proxy_pass http://127.0.0.1:3000;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:3000;
     }
 }
 ```
 
-O limite padrão e o login ficam em 16 KiB; Configurações permite 24 KiB para o template de até 20 KiB. Somente geração e importação recebem `client_max_body_size 60m`: geração aceita até 56 MiB agregados e a importação valida a planilha em até 20 MiB. O cabeçalho `X-Trusted-Client-Ip` só é confiável porque o Nginx sobrescreve `X-Trusted-Proxy-Secret`; remova cabeçalhos recebidos do cliente nessa borda se a configuração local os preservar. Os headers Upgrade/Connection cobrem WebSocket se alguma camada futura o exigir.
+O limite padrão e o login ficam em 16 KiB; Configurações permite 24 KiB para o template de até 20 KiB. Geração e importação recebem `client_max_body_size 60m`: geração aceita até 56 MiB agregados e a importação valida a planilha em até 20 MiB. A extração de produto recebe `client_max_body_size 26m`, acima de `MAX_PRODUCT_EXTRACTION_BODY_BYTES` (26 MiB) para o limite do próprio app vencer e responder JSON em vez do Nginx cortar a conexão com 413. O cabeçalho `X-Trusted-Client-Ip` só é confiável porque o Nginx sobrescreve `X-Trusted-Proxy-Secret`; remova cabeçalhos recebidos do cliente nessa borda se a configuração local os preservar. Os headers Upgrade/Connection cobrem WebSocket se alguma camada futura o exigir.
 
 ## Backup, restore e rotação
 
