@@ -51,7 +51,7 @@ export class GenerationService {
         cacheReadTokens: result.usage.cacheReadTokens,
         cacheWriteTokens: result.usage.cacheWriteTokens,
       });
-      return validateCreativeBatch(input, result.batch, settings.veoTemplate, settings.geminiTemplate, settings.updatedAt.toISOString());
+      return validateCreativeBatch(input, result.batch, settings.veoTemplate, settings.geminiTemplate, settings.updatedAt.toISOString(), settings.veoPovTemplate, settings.geminiPovTemplate);
     } catch (error) {
       if (error instanceof GenerationFailure) throw error;
       warnUnexpectedFailure("service", error);

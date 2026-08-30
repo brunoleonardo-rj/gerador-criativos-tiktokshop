@@ -1,12 +1,16 @@
 import { renderVeoTemplate } from "@/features/settings/veo-template";
 import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
+import { DEFAULT_GEMINI_POV_TEMPLATE } from "@/features/settings/gemini-pov-template";
+import { renderVeoPovTemplate } from "@/features/settings/veo-pov-template";
+import { DEFAULT_VEO_POV_TEMPLATE } from "@/features/settings/service";
 import { buildGeminiPrompt, deriveRenderPlan, figurinoInstruction, veoAnchorInstruction, type ProductProfile } from "./render-plan";
+import { buildGeminiPovPrompt } from "./pov-prompt";
 import { creativeBatchSchema, generationInputSchema, type CreativeBatch, type GenerationInput, type SpeechBeat } from "./schema";
 
 export type IssueSeverity = "warning" | "block";
 export type GenerationIssue = { code: string; severity: IssueSeverity; field: string; message: string };
 export type VeoPrompts = { trecho1: string | null; trecho2: string | null; trecho3: string | null };
-export type CreativeEnvelope = CreativeBatch["creatives"][number] & { promptGemini: string | null; veoPrompts: VeoPrompts; actualCounts: { trecho1: number; trecho2: number; trecho3: number | null; pov: number }; issues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked" };
+export type CreativeEnvelope = CreativeBatch["creatives"][number] & { promptGemini: string | null; veoPrompts: VeoPrompts; promptGeminiPov: string | null; veoPromptsPov: VeoPrompts; actualCounts: { trecho1: number; trecho2: number; trecho3: number | null; pov: number }; issues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked" };
 export type GenerationEnvelope = Omit<CreativeBatch, "creatives"> & { creatives: CreativeEnvelope[]; batchIssues: GenerationIssue[]; status: "valid" | "needs_review" | "blocked"; settingsUpdatedAt: string | null; productProfile: ProductProfile };
 
 const AMOUNT = "(?:\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?|\\d+)";
@@ -27,7 +31,7 @@ export function renderSpeechBeats(beats: SpeechBeat[]): string {
 const add = (issues: GenerationIssue[], code: string, severity: IssueSeverity, field: string, message: string) => issues.push({ code, severity, field, message });
 const CONTINUATION_NOTE = "This segment continues directly from the final frame of the previous video segment — use that final frame as the primary visual reference for pose, lighting, and framing continuity, and cross-reference the original product reference photos to keep every product detail (color, cut, pockets, buttons, texture) exactly consistent with them. Do not let the product drift between segments.";
 const trechoKeys = ["trecho1", "trecho2", "trecho3"] as const;
-function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoNormalizado: string, veoTemplate: string, geminiTemplate: string, profile: ProductProfile): { promptGemini: string | null; veoPrompts: VeoPrompts; issues: GenerationIssue[] } {
+function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoNormalizado: string, veoTemplate: string, geminiTemplate: string, profile: ProductProfile, povVeoTemplate: string, povGeminiTemplate: string): { promptGemini: string | null; veoPrompts: VeoPrompts; promptGeminiPov: string | null; veoPromptsPov: VeoPrompts; issues: GenerationIssue[] } {
   const issues: GenerationIssue[] = [];
   let promptGemini: string | null = null;
   try {
@@ -35,8 +39,15 @@ function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoN
   } catch {
     add(issues, "GEMINI_TEMPLATE_INVALID", "block", "promptGemini", "O template Gemini possui variável inválida ou não resolvida.");
   }
+  let promptGeminiPov: string | null = null;
+  try {
+    promptGeminiPov = buildGeminiPovPrompt(povGeminiTemplate, creative.geminiSlots);
+  } catch {
+    add(issues, "GEMINI_POV_TEMPLATE_INVALID", "block", "promptGeminiPov", "O template Gemini POV possui variável inválida ou não resolvida.");
+  }
   const segments = [creative.copy.trecho1, creative.copy.trecho2, creative.copy.trecho3];
   const veoPrompts: VeoPrompts = { trecho1: null, trecho2: null, trecho3: null };
+  const veoPromptsPov: VeoPrompts = { trecho1: null, trecho2: null, trecho3: null };
   const anchor = veoAnchorInstruction(profile.formatoUso);
   segments.forEach((segment, index) => {
     if (!segment) return;
@@ -48,15 +59,21 @@ function renderPromptsFor(creative: CreativeBatch["creatives"][number], produtoN
     } catch {
       add(issues, "VEO_TEMPLATE_INVALID", "block", `veoPrompts.${key}`, "O template VEO possui variável inválida ou não resolvida.");
     }
+    try {
+      veoPromptsPov[key] = renderVeoPovTemplate(povVeoTemplate, { produto: produtoNormalizado, copy_trecho: segment.texto, ambiente: creative.ambiente, continuidade: index > 0 ? CONTINUATION_NOTE : "" });
+    } catch {
+      add(issues, "VEO_POV_TEMPLATE_INVALID", "block", `veoPromptsPov.${key}`, "O template VEO POV possui variável inválida ou não resolvida.");
+    }
   });
-  return { promptGemini, veoPrompts, issues };
+  return { promptGemini, veoPrompts, promptGeminiPov, veoPromptsPov, issues };
 }
-export function refreshPrompts(envelope: GenerationEnvelope, veoTemplate: string, geminiTemplate: string, settingsUpdatedAt: string | null): GenerationEnvelope {
+export function refreshPrompts(envelope: GenerationEnvelope, veoTemplate: string, geminiTemplate: string, settingsUpdatedAt: string | null, povVeoTemplate = DEFAULT_VEO_POV_TEMPLATE, povGeminiTemplate = DEFAULT_GEMINI_POV_TEMPLATE): GenerationEnvelope {
   const creatives = envelope.creatives.map((creative) => {
-    const rendered = renderPromptsFor(creative, envelope.produtoNormalizado, veoTemplate, geminiTemplate, envelope.productProfile);
-    const issues = [...creative.issues.filter((issue) => issue.code !== "GEMINI_TEMPLATE_INVALID" && issue.code !== "VEO_TEMPLATE_INVALID"), ...rendered.issues];
+    const rendered = renderPromptsFor(creative, envelope.produtoNormalizado, veoTemplate, geminiTemplate, envelope.productProfile, povVeoTemplate, povGeminiTemplate);
+    const staleCodes = new Set(["GEMINI_TEMPLATE_INVALID", "VEO_TEMPLATE_INVALID", "GEMINI_POV_TEMPLATE_INVALID", "VEO_POV_TEMPLATE_INVALID"]);
+    const issues = [...creative.issues.filter((issue) => !staleCodes.has(issue.code)), ...rendered.issues];
     const status: CreativeEnvelope["status"] = issues.some((issue) => issue.severity === "block") ? "blocked" : issues.length ? "needs_review" : "valid";
-    return { ...creative, promptGemini: rendered.promptGemini, veoPrompts: rendered.veoPrompts, issues, status };
+    return { ...creative, promptGemini: rendered.promptGemini, veoPrompts: rendered.veoPrompts, promptGeminiPov: rendered.promptGeminiPov, veoPromptsPov: rendered.veoPromptsPov, issues, status };
   });
   const status: GenerationEnvelope["status"] = envelope.batchIssues.some((issue) => issue.severity === "block") || creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
   return { ...envelope, creatives, status, settingsUpdatedAt };
@@ -114,7 +131,7 @@ function extractBrandCandidates(nomeProduto: string): string[] {
   return nomeProduto.split(/\s+/u).map((word) => word.replace(/[.,;:!?()]/gu, "")).filter((word) => word.length >= 3 && /^[A-ZÀ-Ú][a-zà-ú]+$/u.test(word) && !stopwords.has(normalizeKey(word)));
 }
 
-export function validateCreativeBatch(input: GenerationInput, batch: CreativeBatch, veoTemplate: string, geminiTemplate = DEFAULT_GEMINI_TEMPLATE, settingsUpdatedAt: string | null = null): GenerationEnvelope {
+export function validateCreativeBatch(input: GenerationInput, batch: CreativeBatch, veoTemplate: string, geminiTemplate = DEFAULT_GEMINI_TEMPLATE, settingsUpdatedAt: string | null = null, povVeoTemplate = DEFAULT_VEO_POV_TEMPLATE, povGeminiTemplate = DEFAULT_GEMINI_POV_TEMPLATE): GenerationEnvelope {
   const safeInput = generationInputSchema.parse(input);
   const safeBatch = creativeBatchSchema.parse(batch);
   const expected = segmentRules[safeInput.duracaoTotal];
@@ -181,13 +198,15 @@ export function validateCreativeBatch(input: GenerationInput, batch: CreativeBat
     if (creative.descartavel && !creative.motivoDescartavel) add(issues, "DISCARD_REASON_MISSING", "block", "motivoDescartavel", "O criativo foi marcado como descartável sem justificativa.");
     if (!creative.descartavel && creative.motivoDescartavel) add(issues, "DISCARD_REASON_UNEXPECTED", "warning", "motivoDescartavel", "Uma justificativa de descarte foi ignorada porque o criativo não foi marcado como descartável.");
     if (creative.descartavel && creative.motivoDescartavel) add(issues, "CREATIVE_DISCARDED", "warning", "motivoDescartavel", `Criativo marcado como descartável: ${creative.motivoDescartavel}`);
-    const rendered = renderPromptsFor(creative, safeBatch.produtoNormalizado, veoTemplate, geminiTemplate, safeInput.productProfile);
+    const rendered = renderPromptsFor(creative, safeBatch.produtoNormalizado, veoTemplate, geminiTemplate, safeInput.productProfile, povVeoTemplate, povGeminiTemplate);
     const promptGemini = rendered.promptGemini;
     const veoPrompts = rendered.veoPrompts;
+    const promptGeminiPov = rendered.promptGeminiPov;
+    const veoPromptsPov = rendered.veoPromptsPov;
     issues.push(...rendered.issues);
     const actualCounts = { trecho1: countWords(creative.copy.trecho1.texto), trecho2: countWords(creative.copy.trecho2.texto), trecho3: creative.copy.trecho3 ? countWords(creative.copy.trecho3.texto) : null, pov: actualPov };
     const status: CreativeEnvelope["status"] = issues.some((issue) => issue.severity === "block") ? "blocked" : issues.length ? "needs_review" : "valid";
-    return { ...creative, motivoDescartavel: creative.descartavel ? creative.motivoDescartavel : null, promptGemini, veoPrompts, actualCounts, issues, status };
+    return { ...creative, motivoDescartavel: creative.descartavel ? creative.motivoDescartavel : null, promptGemini, veoPrompts, promptGeminiPov, veoPromptsPov, actualCounts, issues, status };
   });
   const status = batchIssues.some((issue) => issue.severity === "block") || creatives.some((creative) => creative.status === "blocked") ? "blocked" : creatives.some((creative) => creative.status === "needs_review") ? "needs_review" : "valid";
   return { ...safeBatch, creatives, batchIssues, status, settingsUpdatedAt, productProfile: safeInput.productProfile };

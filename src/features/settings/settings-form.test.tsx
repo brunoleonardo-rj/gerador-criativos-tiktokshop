@@ -9,6 +9,8 @@ const publicSettingsFixture: PublicSettingsView = {
   model: "claude-sonnet-5",
   veoTemplate: "{{copy_trecho}}",
   geminiTemplate: "{{produto}}",
+  veoPovTemplate: "{{copy_trecho}}",
+  geminiPovTemplate: "{{produto}}",
   updatedAt: "2026-08-21T12:00:00.000Z",
 };
 
@@ -54,6 +56,19 @@ describe("SettingsForm", () => {
     expect(screen.getByText(/Produto: Garrafa térmica Aurora/, { selector: "output" })).toBeInTheDocument();
   });
 
+  it("edita e pré-visualiza os templates POV em abas próprias", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm initial={publicSettingsFixture} onSave={vi.fn()} onDeleteKey={vi.fn()} />);
+
+    await user.click(screen.getByRole("tab", { name: "Prompt VEO 3 (POV)" }));
+    fireEvent.change(screen.getByLabelText("Template VEO 3 (POV)"), { target: { value: "Fala POV: {{copy_trecho}}" } });
+    expect(screen.getByText(/Fala POV:/, { selector: "output" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Prompt Gemini (POV)" }));
+    fireEvent.change(screen.getByLabelText("Template Gemini (POV)"), { target: { value: "Produto POV: {{produto}}" } });
+    expect(screen.getByText(/Produto POV: Garrafa térmica Aurora/, { selector: "output" })).toBeInTheDocument();
+  });
+
   it("descreve o template somente com ids existentes", async () => {
     const user = userEvent.setup();
     render(<SettingsForm initial={publicSettingsFixture} onSave={vi.fn()} onDeleteKey={vi.fn()} />);
@@ -74,7 +89,7 @@ describe("SettingsForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Salvar configurações" }));
 
-    expect(onSave).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" });
+    expect(onSave).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}", veoPovTemplate: "{{copy_trecho}}", geminiPovTemplate: "{{produto}}" });
     expect(screen.getByLabelText("Nova chave da Anthropic")).toHaveValue("");
   });
 

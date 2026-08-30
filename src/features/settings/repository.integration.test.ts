@@ -23,20 +23,24 @@ describe("PrismaSettingsRepository", () => {
       "anthropicModel" TEXT NOT NULL DEFAULT 'claude-sonnet-5',
       "veoTemplate" TEXT NOT NULL,
       "geminiTemplate" TEXT NOT NULL,
+      "veoPovTemplate" TEXT NOT NULL DEFAULT '',
+      "geminiPovTemplate" TEXT NOT NULL DEFAULT '',
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL
     )`);
     const repository = new PrismaSettingsRepository(client);
     const encrypted: EncryptedSecret = { ciphertext: "ciphertext", iv: "iv", tag: "tag", version: 1 };
 
-    await client.appSettings.create({ data: { id: "singleton", veoTemplate: "{{copy_legada}}", geminiTemplate: "" } });
-    const defaults = await repository.getOrCreate("{{copy_completa}}", "{{produto}}");
+    await client.appSettings.create({ data: { id: "singleton", veoTemplate: "{{copy_legada}}", geminiTemplate: "", veoPovTemplate: "", geminiPovTemplate: "" } });
+    const defaults = await repository.getOrCreate("{{copy_completa}}", "{{produto}}", "{{copy_trecho}}", "{{produto_pov}}");
     expect(defaults.geminiTemplate).toBe("{{produto}}");
     expect(defaults.veoTemplate).toBe("{{copy_legada}}");
-    const saved = await repository.update({ encryptedApiKey: encrypted, apiKeyLastFour: "7890", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}" });
+    expect(defaults.veoPovTemplate).toBe("{{copy_trecho}}");
+    expect(defaults.geminiPovTemplate).toBe("{{produto_pov}}");
+    const saved = await repository.update({ encryptedApiKey: encrypted, apiKeyLastFour: "7890", model: "claude-sonnet-5", veoTemplate: "{{copy_completa}}", geminiTemplate: "{{produto}}", veoPovTemplate: "{{copy_trecho}}", geminiPovTemplate: "{{produto_pov}}" });
     expect(saved.encryptedApiKey).toEqual(encrypted);
     await repository.deleteApiKey();
-    expect((await repository.getOrCreate("unused", "unused")).encryptedApiKey).toBeNull();
+    expect((await repository.getOrCreate("unused", "unused", "unused", "unused")).encryptedApiKey).toBeNull();
     await client.$disconnect();
   });
 });

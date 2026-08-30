@@ -38,6 +38,15 @@ describe("ResultCard", () => {
     expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeEnabled();
   });
 
+  it("blocks only the POV Gemini prompt while POV VEO trechos stay copyable", async () => {
+    const user = userEvent.setup();
+    const creative = { ...result(), issues: [{ code: "GEMINI_POV_TEMPLATE_INVALID", severity: "block" as const, field: "promptGeminiPov", message: "Template inválido" }], status: "blocked" as const };
+    render(<ResultCard creative={creative} />);
+    await user.click(screen.getByRole("tab", { name: "POV" }));
+    expect(screen.getByRole("button", { name: "Copiar Prompt Gemini (POV)" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 (POV) — Trecho 1" })).toBeEnabled();
+  });
+
   it("keeps warning fields copyable and keeps null VEO disabled", async () => {
     const user = userEvent.setup();
     const warning = { ...result(), issues: [{ code: "WORDS", severity: "warning" as const, field: "descricao", message: "Revise" }], status: "needs_review" as const };
@@ -123,5 +132,8 @@ describe("ResultCard", () => {
     expect(screen.getByText(/VEO Eu deixo minha água/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("tab", { name: "Gemini" }));
     expect(screen.getByText(/PRODUTO: Garrafa térmica/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "POV" }));
+    expect(screen.getByText(/estilo POV/)).toBeInTheDocument();
+    expect(screen.getByText(/Eu deixo minha água pronta/)).toBeInTheDocument();
   });
 });

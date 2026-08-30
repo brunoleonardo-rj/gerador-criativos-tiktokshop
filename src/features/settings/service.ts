@@ -3,6 +3,8 @@ import { decryptSecret, encryptSecret } from "./crypto";
 import type { SettingsRepository } from "./repository";
 import { validateVeoTemplate } from "./veo-template";
 import { DEFAULT_GEMINI_TEMPLATE, validateGeminiTemplate } from "./gemini-template";
+import { validateVeoPovTemplate } from "./veo-pov-template";
+import { DEFAULT_GEMINI_POV_TEMPLATE, validateGeminiPovTemplate } from "./gemini-pov-template";
 
 export const DEFAULT_VEO_TEMPLATE = `Create a highly realistic 9:16 vertical video using the provided frame as the visual reference.
 Preserve the identity, product, environment, lighting direction, and overall composition shown in the image, while allowing natural motion and continuity to bring the scene to life. {{continuidade}}
@@ -71,16 +73,41 @@ GENERAL GUIDELINES:
 
 LAST FRAME CHECK (verify before finishing): in the very last frame of the video, {{ancoragem_frame_final}}, her clothing still has no printed graphic or decoration beyond the reference frame, and her skin still shows no invented tattoo or mark. The shot must never end with a changed appearance.`;
 
+export const DEFAULT_VEO_POV_TEMPLATE = `Create a highly realistic 9:16 vertical video, up to 10 seconds, using the provided frame as the visual reference and as the first frame of the video. POV UGC style, filmed with a phone's back camera. {{continuidade}}
+
+IMPORTANTE — preserve exatamente o mesmo produto da imagem, sem alterar absolutamente nada: não mudar formato, proporções, cores, textos, marca, tampa, acabamento, material, brilho ou qualquer outro detalhe visual. Não redesenhar, não substituir e não reinterpretar o produto. O vídeo deve mostrar exatamente o mesmo produto da imagem de referência, do primeiro ao último frame.
+
+PRODUCT: {{produto}}
+ENVIRONMENT: {{ambiente}} — mantenha o mesmo ambiente, a mesma luz e a mesma profundidade de campo da imagem de referência, sem cortes e sem mudança de cenário.
+
+Mostre somente uma mão e parte do antebraço interagindo com o produto, em movimentos lentos, naturais e realistas. Câmera na mão, leve e estável. Sem rosto visível e sem celular visível na cena.
+
+INFLUENCER SPEECH (Portuguese only) — SHOULD BE THE SAME WORD BY WORD AS BELOW, as off-camera narration:
+"{{copy_trecho}}"
+- A voz narra por cima da cena, espontânea, com pausas leves e ritmo natural, sotaque brasileiro suave.
+- Tom amigável, curioso e confiante — nunca lido ou robótico.
+- Não adicione, remova ou reordene nenhuma palavra.
+
+ÁUDIO: som ambiente real do local, ruído sutil de manuseio do produto, mais a narração acima — sem trilha sonora musical.
+
+ESTILO: gravação real de celular, luz ambiente, textura realista, baixo contraste, saturação neutra.
+
+NÃO ADICIONE: texto na tela, legendas, interface, ícones, botão de play, rosto, celular visível, outro produto ou efeitos gráficos.
+
+EVITE: mãos deformadas, dedos extras, produto instável, cortes, zoom exagerado, aparência de estúdio ou de imagem gerada por IA.`;
+
 export type PublicSettings = {
   apiKeyConfigured: boolean;
   apiKeyMask: string | null;
   model: string;
   veoTemplate: string;
   geminiTemplate: string;
+  veoPovTemplate: string;
+  geminiPovTemplate: string;
   updatedAt: Date;
 };
 
-export type GenerationSettings = { apiKey: string; model: string; veoTemplate: string; geminiTemplate: string; updatedAt: Date };
+export type GenerationSettings = { apiKey: string; model: string; veoTemplate: string; geminiTemplate: string; veoPovTemplate: string; geminiPovTemplate: string; updatedAt: Date };
 
 export class SettingsService {
   constructor(
@@ -88,29 +115,39 @@ export class SettingsService {
     private readonly encryptionKey: Buffer,
     private readonly defaultTemplate = DEFAULT_VEO_TEMPLATE,
     private readonly defaultGeminiTemplate = DEFAULT_GEMINI_TEMPLATE,
+    private readonly defaultVeoPovTemplate = DEFAULT_VEO_POV_TEMPLATE,
+    private readonly defaultGeminiPovTemplate = DEFAULT_GEMINI_POV_TEMPLATE,
   ) {}
 
   async getPublic(): Promise<PublicSettings> {
-    const settings = await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate);
+    const settings = await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate, this.defaultVeoPovTemplate, this.defaultGeminiPovTemplate);
     return {
       apiKeyConfigured: settings.encryptedApiKey !== null,
       apiKeyMask: settings.apiKeyLastFour ? `••••${settings.apiKeyLastFour}` : null,
       model: settings.model,
       veoTemplate: settings.veoTemplate,
       geminiTemplate: settings.geminiTemplate,
+      veoPovTemplate: settings.veoPovTemplate,
+      geminiPovTemplate: settings.geminiPovTemplate,
       updatedAt: settings.updatedAt,
     };
   }
 
-  async update(input: { apiKey?: string; model: string; veoTemplate: string; geminiTemplate: string }): Promise<PublicSettings> {
+  async update(input: { apiKey?: string; model: string; veoTemplate: string; geminiTemplate: string; veoPovTemplate: string; geminiPovTemplate: string }): Promise<PublicSettings> {
     const validation = validateVeoTemplate(input.veoTemplate);
     if (!validation.valid) throw new Error(`Template VEO contém variáveis não permitidas: ${validation.unknown.join(", ")}.`);
     const geminiValidation = validateGeminiTemplate(input.geminiTemplate);
     if (!geminiValidation.valid) throw new Error(`Template Gemini contém variáveis não permitidas: ${geminiValidation.unknown.join(", ")}.`);
+    const povValidation = validateVeoPovTemplate(input.veoPovTemplate);
+    if (!povValidation.valid) throw new Error(`Template VEO POV contém variáveis não permitidas: ${povValidation.unknown.join(", ")}.`);
+    const geminiPovValidation = validateGeminiPovTemplate(input.geminiPovTemplate);
+    if (!geminiPovValidation.valid) throw new Error(`Template Gemini POV contém variáveis não permitidas: ${geminiPovValidation.unknown.join(", ")}.`);
     const updated = await this.repository.update({
       model: input.model,
       veoTemplate: input.veoTemplate,
       geminiTemplate: input.geminiTemplate,
+      veoPovTemplate: input.veoPovTemplate,
+      geminiPovTemplate: input.geminiPovTemplate,
       ...(input.apiKey === undefined ? {} : { encryptedApiKey: encryptSecret(input.apiKey, this.encryptionKey), apiKeyLastFour: input.apiKey.slice(-4) }),
     });
     return {
@@ -119,18 +156,20 @@ export class SettingsService {
       model: updated.model,
       veoTemplate: updated.veoTemplate,
       geminiTemplate: updated.geminiTemplate,
+      veoPovTemplate: updated.veoPovTemplate,
+      geminiPovTemplate: updated.geminiPovTemplate,
       updatedAt: updated.updatedAt,
     };
   }
 
   async deleteApiKey(): Promise<void> {
-    await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate);
+    await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate, this.defaultVeoPovTemplate, this.defaultGeminiPovTemplate);
     await this.repository.deleteApiKey();
   }
 
   async getGenerationSettings(): Promise<GenerationSettings> {
-    const settings = await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate);
+    const settings = await this.repository.getOrCreate(this.defaultTemplate, this.defaultGeminiTemplate, this.defaultVeoPovTemplate, this.defaultGeminiPovTemplate);
     if (!settings.encryptedApiKey) throw new Error("A chave da Anthropic não está configurada.");
-    return { apiKey: decryptSecret(settings.encryptedApiKey, this.encryptionKey), model: settings.model, veoTemplate: settings.veoTemplate, geminiTemplate: settings.geminiTemplate, updatedAt: settings.updatedAt };
+    return { apiKey: decryptSecret(settings.encryptedApiKey, this.encryptionKey), model: settings.model, veoTemplate: settings.veoTemplate, geminiTemplate: settings.geminiTemplate, veoPovTemplate: settings.veoPovTemplate, geminiPovTemplate: settings.geminiPovTemplate, updatedAt: settings.updatedAt };
   }
 }

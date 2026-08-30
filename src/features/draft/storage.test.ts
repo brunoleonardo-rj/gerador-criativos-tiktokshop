@@ -123,6 +123,18 @@ describe("assetStorage", () => {
     expect(listed[0].creatives[0].geminiSlots).not.toHaveProperty("enquadramentoExtra");
   });
 
+  it("migrates a result stored before the POV prompt fields existed instead of discarding it", async () => {
+    const result = { ...validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "Produto {{produto}} {{copy_trecho}}"), id: "40000000-0000-4000-8000-000000000000" };
+    const legacy = { ...result, creatives: result.creatives.map(({ promptGeminiPov, veoPromptsPov, ...creative }) => creative) };
+    const db = await openDB("creative-generator", 2);
+    await db.put("results", legacy);
+
+    const migrated = await assetStorage.getResult(result.id);
+
+    expect(migrated?.creatives[0].promptGeminiPov).toBeNull();
+    expect(migrated?.creatives[0].veoPromptsPov).toEqual({ trecho1: null, trecho2: null, trecho3: null });
+  });
+
   it("preserves selection order instead of sorting opaque UUIDs", async () => {
     const first = { ...image, id: "f0000000-0000-4000-8000-000000000000" };
     const second = { ...image, id: "10000000-0000-4000-8000-000000000000", name: "segundo.jpg" };

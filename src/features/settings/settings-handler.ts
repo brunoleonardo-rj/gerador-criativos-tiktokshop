@@ -3,12 +3,16 @@ import { z } from "zod";
 import type { PublicSettings, SettingsService } from "./service";
 import { validateVeoTemplate } from "./veo-template";
 import { validateGeminiTemplate } from "./gemini-template";
+import { validateVeoPovTemplate } from "./veo-pov-template";
+import { validateGeminiPovTemplate } from "./gemini-pov-template";
 
 const updateSchema = z.object({
   apiKey: z.string().max(500).optional(),
   model: z.string().trim().min(1).max(120),
   veoTemplate: z.string().trim().min(1).max(40_000),
   geminiTemplate: z.string().trim().min(1).max(40_000),
+  veoPovTemplate: z.string().trim().min(1).max(40_000),
+  geminiPovTemplate: z.string().trim().min(1).max(40_000),
 }).strict();
 const MAX_SETTINGS_JSON_BYTES = 65_536;
 
@@ -124,6 +128,8 @@ export function makeSettingsHandlers(deps: SettingsHandlerDependencies) {
       }
       if (!validateVeoTemplate(input.veoTemplate).valid) return invalidData();
       if (!validateGeminiTemplate(input.geminiTemplate).valid) return invalidData();
+      if (!validateVeoPovTemplate(input.veoPovTemplate).valid) return invalidData();
+      if (!validateGeminiPovTemplate(input.geminiPovTemplate).valid) return invalidData();
 
       try {
         const apiKey = input.apiKey?.trim();
@@ -131,6 +137,8 @@ export function makeSettingsHandlers(deps: SettingsHandlerDependencies) {
           model: input.model,
           veoTemplate: input.veoTemplate,
           geminiTemplate: input.geminiTemplate,
+          veoPovTemplate: input.veoPovTemplate,
+          geminiPovTemplate: input.geminiPovTemplate,
           ...(apiKey ? { apiKey } : {}),
         }));
       } catch {

@@ -7,6 +7,8 @@ const publicSettings = {
   model: "claude-sonnet-5",
   veoTemplate: "{{copy_trecho}}",
   geminiTemplate: "{{produto}}",
+  veoPovTemplate: "{{copy_trecho}}",
+  geminiPovTemplate: "{{produto}}",
   updatedAt: new Date("2026-08-21T12:00:00.000Z"),
 };
 
@@ -93,27 +95,29 @@ describe("settings handlers", () => {
   it("aceita um JSON válido próximo ao limite", async () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
-    const veoTemplate = "{{copy_trecho}}" + "a".repeat(30_000 - "{{copy_trecho}}".length);
-    const geminiTemplate = "{{produto}}" + "b".repeat(30_000 - "{{produto}}".length);
+    const veoTemplate = "{{copy_trecho}}" + "a".repeat(15_000 - "{{copy_trecho}}".length);
+    const geminiTemplate = "{{produto}}" + "b".repeat(15_000 - "{{produto}}".length);
+    const veoPovTemplate = "{{copy_trecho}}" + "c".repeat(15_000 - "{{copy_trecho}}".length);
+    const geminiPovTemplate = "{{produto}}" + "d".repeat(15_000 - "{{produto}}".length);
 
     const response = await handlers.PUT(new Request("http://local/api/settings", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate, geminiTemplate }),
+      body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate, geminiTemplate, veoPovTemplate, geminiPovTemplate }),
     }));
 
     expect(response.status).toBe(200);
-    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate, geminiTemplate });
+    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate, geminiTemplate, veoPovTemplate, geminiPovTemplate });
   });
 
   it("valida entrada de atualização sem substituir a chave quando ela está em branco", async () => {
     const service = makeService();
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ apiKey: "", model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ apiKey: "", model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}", veoPovTemplate: "{{copy_trecho}}", geminiPovTemplate: "{{produto}}" }) }));
 
     expect(response.status).toBe(200);
-    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" });
+    expect(service.update).toHaveBeenCalledWith({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}", veoPovTemplate: "{{copy_trecho}}", geminiPovTemplate: "{{produto}}" });
   });
 
   it("retorna erro de validação sem detalhes internos", async () => {
@@ -140,7 +144,7 @@ describe("settings handlers", () => {
     service.update.mockRejectedValue(new Error("sk-ant-secret must not leak"));
     const handlers = makeSettingsHandlers({ service, requireSession: async () => ({ username: "admin" }), enforceSameOrigin: () => undefined });
 
-    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}" }) }));
+    const response = await handlers.PUT(new Request("http://local/api/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-5", veoTemplate: "{{copy_trecho}}", geminiTemplate: "{{produto}}", veoPovTemplate: "{{copy_trecho}}", geminiPovTemplate: "{{produto}}" }) }));
 
     expect(response.status).toBe(500);
     expect(await response.text()).not.toContain("sk-ant-secret");

@@ -1,0 +1,2 @@
+ALTER TABLE "AppSettings" ADD COLUMN "veoPovTemplate" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "AppSettings" ADD COLUMN "geminiPovTemplate" TEXT NOT NULL DEFAULT '';

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { creativeBatchFixture, generationInputFixture } from "../../../tests/fixtures/creative-result";
 import { containsMoney, countEmoji, countWords, renderSpeechBeats, validateCreativeBatch } from "./validation";
 import { DEFAULT_GEMINI_TEMPLATE } from "@/features/settings/gemini-template";
-import { DEFAULT_VEO_TEMPLATE } from "@/features/settings/service";
+import { DEFAULT_VEO_TEMPLATE, DEFAULT_VEO_POV_TEMPLATE } from "@/features/settings/service";
+import { DEFAULT_GEMINI_POV_TEMPLATE } from "@/features/settings/gemini-pov-template";
 
 describe("validação editorial", () => {
   it.each([[15, [8, 7, null]], [20, [10, 10, null]], [30, [10, 10, 10]]])("aceita duração %s apenas com segmentos corretos", (duration, segmentSeconds) => {
@@ -30,6 +31,18 @@ describe("validação editorial", () => {
     expect(report.creatives[0].promptGemini).toContain("PRODUTO: Garrafa térmica");
     expect(report.creatives[0].veoPrompts.trecho1).toContain('On "água": quick push-in');
     expect(report.creatives[0].veoPrompts.trecho1).not.toMatch(/\{\{|\}\}/u);
+  });
+  it("gera o par de prompts POV (mão + antebraço) junto do par self, reaproveitando os mesmos geminiSlots", () => {
+    const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), DEFAULT_VEO_TEMPLATE, DEFAULT_GEMINI_TEMPLATE, null, DEFAULT_VEO_POV_TEMPLATE, DEFAULT_GEMINI_POV_TEMPLATE);
+    const creative = report.creatives[0];
+
+    expect(creative.promptGeminiPov).toContain("PRODUTO: Garrafa térmica");
+    expect(creative.promptGeminiPov).toContain("estilo POV");
+    expect(creative.promptGeminiPov).not.toContain("IDENTITY LOCK");
+    expect(creative.veoPromptsPov.trecho1).toContain(creative.copy.trecho1.texto);
+    expect(creative.veoPromptsPov.trecho1).toContain("uma mão e parte do antebraço");
+    expect(creative.veoPromptsPov.trecho1).not.toMatch(/\{\{|\}\}/u);
+    expect(creative.promptGemini).toContain("IDENTITY LOCK");
   });
   it("só instrui continuidade com o frame anterior a partir do trecho 2", () => {
     const report = validateCreativeBatch(generationInputFixture(), creativeBatchFixture(), "{{continuidade}}");

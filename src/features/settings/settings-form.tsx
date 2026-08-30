@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import { renderVeoTemplate, validateVeoTemplate, type VeoVariables } from "./veo-template";
 import { renderGeminiTemplate, validateGeminiTemplate, type GeminiVariables } from "./gemini-template";
+import { renderVeoPovTemplate, validateVeoPovTemplate, type VeoPovVariables } from "./veo-pov-template";
+import { renderGeminiPovTemplate, validateGeminiPovTemplate, type GeminiPovVariables } from "./gemini-pov-template";
 import { LibrarySettings } from "@/features/library/library-settings";
 
 const MODEL_PRESETS = [
@@ -18,17 +20,21 @@ export type PublicSettingsView = {
   model: string;
   veoTemplate: string;
   geminiTemplate: string;
+  veoPovTemplate: string;
+  geminiPovTemplate: string;
   updatedAt: string;
 };
 
-type SettingsUpdate = { apiKey?: string; model: string; veoTemplate: string; geminiTemplate: string };
-type Tab = "credential" | "model" | "template" | "gemini" | "library";
+type SettingsUpdate = { apiKey?: string; model: string; veoTemplate: string; geminiTemplate: string; veoPovTemplate: string; geminiPovTemplate: string };
+type Tab = "credential" | "model" | "template" | "gemini" | "pov-template" | "pov-gemini" | "library";
 
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: "credential", label: "Credencial" },
   { id: "model", label: "Modelo" },
   { id: "template", label: "Prompt VEO 3" },
   { id: "gemini", label: "Prompt Gemini" },
+  { id: "pov-template", label: "Prompt VEO 3 (POV)" },
+  { id: "pov-gemini", label: "Prompt Gemini (POV)" },
   { id: "library", label: "Biblioteca" },
 ];
 
@@ -62,6 +68,20 @@ const geminiPreviewValues: GeminiVariables = {
   bloco_interacao: "AÇÃO E INTERAÇÃO COM O PRODUTO:\nmostrar a garrafa sem cobrir o produto\n\n",
 };
 
+const povPreviewValues: VeoPovVariables = {
+  produto: "Garrafa térmica Aurora",
+  copy_trecho: "Eu levo água gelada comigo o dia todo,",
+  ambiente: "cozinha iluminada",
+  continuidade: "",
+};
+
+const geminiPovPreviewValues: GeminiPovVariables = {
+  produto: "Garrafa térmica Aurora",
+  cenario: "cozinha iluminada",
+  acao: "a mão gira a tampa da garrafa devagar",
+  evitar: "Não adicionar logotipos extras.",
+};
+
 async function defaultSave(input: SettingsUpdate): Promise<PublicSettingsView> {
   const response = await fetch("/api/settings", {
     method: "PUT",
@@ -88,11 +108,15 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
   const [model, setModel] = useState(initial.model);
   const [veoTemplate, setVeoTemplate] = useState(initial.veoTemplate);
   const [geminiTemplate, setGeminiTemplate] = useState(initial.geminiTemplate);
+  const [veoPovTemplate, setVeoPovTemplate] = useState(initial.veoPovTemplate);
+  const [geminiPovTemplate, setGeminiPovTemplate] = useState(initial.geminiPovTemplate);
   const [status, setStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const tabsRef = useRef<Array<HTMLButtonElement | null>>([]);
   const templateValidation = useMemo(() => validateVeoTemplate(veoTemplate), [veoTemplate]);
   const geminiTemplateValidation = useMemo(() => validateGeminiTemplate(geminiTemplate), [geminiTemplate]);
+  const povTemplateValidation = useMemo(() => validateVeoPovTemplate(veoPovTemplate), [veoPovTemplate]);
+  const geminiPovTemplateValidation = useMemo(() => validateGeminiPovTemplate(geminiPovTemplate), [geminiPovTemplate]);
   const preview = useMemo(() => {
     if (!templateValidation.valid) return veoTemplate;
     try {
@@ -109,6 +133,22 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
       return geminiTemplate;
     }
   }, [geminiTemplate, geminiTemplateValidation]);
+  const povPreview = useMemo(() => {
+    if (!povTemplateValidation.valid) return veoPovTemplate;
+    try {
+      return renderVeoPovTemplate(veoPovTemplate, povPreviewValues);
+    } catch {
+      return veoPovTemplate;
+    }
+  }, [povTemplateValidation, veoPovTemplate]);
+  const geminiPovPreview = useMemo(() => {
+    if (!geminiPovTemplateValidation.valid) return geminiPovTemplate;
+    try {
+      return renderGeminiPovTemplate(geminiPovTemplate, geminiPovPreviewValues);
+    } catch {
+      return geminiPovTemplate;
+    }
+  }, [geminiPovTemplate, geminiPovTemplateValidation]);
 
   function selectTab(tab: Tab) {
     setActiveTab(tab);
@@ -133,17 +173,29 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
       setStatus("Corrija as variáveis não permitidas do template Gemini antes de salvar.");
       return;
     }
+    if (!povTemplateValidation.valid) {
+      setActiveTab("pov-template");
+      setStatus("Corrija as variáveis não permitidas do template VEO POV antes de salvar.");
+      return;
+    }
+    if (!geminiPovTemplateValidation.valid) {
+      setActiveTab("pov-gemini");
+      setStatus("Corrija as variáveis não permitidas do template Gemini POV antes de salvar.");
+      return;
+    }
     setIsSaving(true);
     setStatus(null);
     try {
-      const saved = await onSave({ model: model.trim(), veoTemplate: veoTemplate.trim(), geminiTemplate: geminiTemplate.trim(), ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) });
+      const saved = await onSave({ model: model.trim(), veoTemplate: veoTemplate.trim(), geminiTemplate: geminiTemplate.trim(), veoPovTemplate: veoPovTemplate.trim(), geminiPovTemplate: geminiPovTemplate.trim(), ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) });
       if (saved) {
         setSettings(saved);
         setModel(saved.model);
         setVeoTemplate(saved.veoTemplate);
         setGeminiTemplate(saved.geminiTemplate);
+        setVeoPovTemplate(saved.veoPovTemplate);
+        setGeminiPovTemplate(saved.geminiPovTemplate);
       } else {
-        setSettings((current) => ({ ...current, model: model.trim(), veoTemplate: veoTemplate.trim(), geminiTemplate: geminiTemplate.trim() }));
+        setSettings((current) => ({ ...current, model: model.trim(), veoTemplate: veoTemplate.trim(), geminiTemplate: geminiTemplate.trim(), veoPovTemplate: veoPovTemplate.trim(), geminiPovTemplate: geminiPovTemplate.trim() }));
       }
       setApiKey("");
       setStatus("Configurações salvas.");
@@ -220,6 +272,28 @@ export function SettingsForm({ initial, onSave = defaultSave, onDeleteKey = defa
         {!geminiTemplateValidation.valid && <p id="gemini-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {geminiTemplateValidation.unknown.join(", ")}.</p>}
         <h3>Prévia com dados fictícios</h3>
         <output className="whitespace-pre-wrap rounded-xl bg-[#fff6f3] p-4 text-sm leading-6 text-[#201a22]">{geminiPreview}</output>
+      </section>
+
+      <section role="tabpanel" id="settings-panel-pov-template" aria-labelledby="settings-tab-pov-template" hidden={activeTab !== "pov-template"} className="grid gap-4 py-6 text-[#514955]">
+        <h2>Prompt VEO 3 (POV)</h2>
+        <p className="text-sm text-[#665e68]">Vídeo POV — mão e antebraço interagindo com o produto, sem rosto e sem celular visível. Gerado junto do Prompt VEO 3 normal para cada criativo.</p>
+        <label htmlFor="pov-template">Template VEO 3 (POV)</label>
+        <textarea id="pov-template" name="veoPovTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={8} value={veoPovTemplate} onChange={(event) => setVeoPovTemplate(event.target.value)} aria-invalid={!povTemplateValidation.valid} aria-describedby={`pov-template-help${povTemplateValidation.valid ? "" : " pov-template-error"}`} required />
+        <p id="pov-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{copy_trecho}}"}, {"{{ambiente}}"} e {"{{continuidade}}"}. Um prompt VEO POV completo é renderizado para cada trecho de fala do criativo, reaproveitando a mesma copy falada como narração; a partir do trecho 2, {"{{continuidade}}"} instrui a usar o frame final do segmento anterior.</p>
+        {!povTemplateValidation.valid && <p id="pov-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {povTemplateValidation.unknown.join(", ")}.</p>}
+        <h3>Prévia com dados fictícios</h3>
+        <output className="whitespace-pre-wrap rounded-xl bg-[#fff6f3] p-4 text-sm leading-6 text-[#201a22]">{povPreview}</output>
+      </section>
+
+      <section role="tabpanel" id="settings-panel-pov-gemini" aria-labelledby="settings-tab-pov-gemini" hidden={activeTab !== "pov-gemini"} className="grid gap-4 py-6 text-[#514955]">
+        <h2>Prompt Gemini (POV)</h2>
+        <p className="text-sm text-[#665e68]">Frame de referência POV — mesmo produto e ambiente do criativo, sem identidade, figurino ou pose (não há pessoa visível além da mão).</p>
+        <label htmlFor="pov-gemini-template">Template Gemini (POV)</label>
+        <textarea id="pov-gemini-template" name="geminiPovTemplate" className="w-full rounded-lg border border-[#cfc5bd] px-3 py-2 font-mono text-sm" rows={12} value={geminiPovTemplate} onChange={(event) => setGeminiPovTemplate(event.target.value)} aria-invalid={!geminiPovTemplateValidation.valid} aria-describedby={`pov-gemini-template-help${geminiPovTemplateValidation.valid ? "" : " pov-gemini-template-error"}`} required />
+        <p id="pov-gemini-template-help" className="text-sm text-[#665e68]">Variáveis aceitas: {"{{produto}}"}, {"{{cenario}}"}, {"{{acao}}"} e {"{{evitar}}"}. Reaproveita os mesmos slots do Prompt Gemini normal — não gera dados extras.</p>
+        {!geminiPovTemplateValidation.valid && <p id="pov-gemini-template-error" role="alert" className="rounded-lg bg-[#fff1f0] p-3 text-sm text-[#b42318]">Variáveis não permitidas: {geminiPovTemplateValidation.unknown.join(", ")}.</p>}
+        <h3>Prévia com dados fictícios</h3>
+        <output className="whitespace-pre-wrap rounded-xl bg-[#fff6f3] p-4 text-sm leading-6 text-[#201a22]">{geminiPovPreview}</output>
       </section>
 
       <section role="tabpanel" id="settings-panel-library" aria-labelledby="settings-tab-library" hidden={activeTab !== "library"} className="grid gap-4 py-6 text-[#514955]">

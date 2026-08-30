@@ -30,6 +30,8 @@ const settings = () => ({
     model: "claude-test",
     veoTemplate: "Fala: {{copy_completa}}",
     geminiTemplate: "{{produto}}",
+    veoPovTemplate: "POV: {{copy_trecho}}",
+    geminiPovTemplate: "POV {{produto}}",
     updatedAt: new Date("2026-01-01T00:00:00Z"),
   }),
 });
