@@ -336,30 +336,23 @@
 }
 
 .tabList {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
   margin: 0 1.4rem;
-  overflow: hidden;
-  border: 1px solid #dcd4e2;
-  border-radius: 0.65rem;
 }
 
 .tabList button {
-  min-width: 0;
-  min-height: 2.7rem;
-  padding: 0.5rem 0.35rem;
-  color: #413845;
-  background: #fff;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  color: #5f5662;
+  background: #f7f4ff;
   border: 0;
-  border-right: 1px solid #e2dce5;
+  border-radius: 0.5rem;
   font: inherit;
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 800;
   cursor: pointer;
-}
-
-.tabList button:last-child {
-  border-right: 0;
 }
 
 .tabList button[aria-selected="true"] {
@@ -373,8 +366,7 @@
   overflow: auto;
 }
 
-.panelStack,
-.geminiPanel {
+.panelStack {
   display: grid;
   gap: 0;
 }
@@ -405,7 +397,6 @@
 }
 
 .outputHeading h3,
-.geminiPanel h3,
 .alertField h3 {
   font-size: 0.88rem;
   line-height: 1.35;
@@ -420,8 +411,7 @@
   line-height: 1.6;
 }
 
-.outputMeta,
-.panelHint {
+.outputMeta {
   color: #776e79;
   font-size: 0.72rem;
 }
@@ -445,32 +435,6 @@
 .sceneGrid {
   display: grid;
   gap: 0;
-}
-
-.geminiPanel {
-  gap: 0.8rem;
-}
-
-.geminiPanel h3,
-.geminiPanel p {
-  margin: 0;
-}
-
-.panelEyebrow {
-  color: #6f52d9;
-  font-size: 0.68rem;
-  font-weight: 850;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.geminiPanel h3 {
-  margin-top: 0.25rem;
-  font-size: 1rem;
-}
-
-.panelHint {
-  margin-top: 0.25rem !important;
 }
 
 .prompt {

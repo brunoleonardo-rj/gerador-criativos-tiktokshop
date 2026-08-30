@@ -6,11 +6,10 @@ import { CopyButton } from "./copy-button";
 import styles from "./results.module.css";
 
 const statusLabel = { valid: "Aprovado", needs_review: "Atenção", blocked: "Bloqueado" } as const;
-type ResultTab = "copy" | "veo" | "gemini" | "pov" | "publication";
+type ResultTab = "copy" | "selfie" | "pov" | "publication";
 const tabs: { id: ResultTab; label: string }[] = [
   { id: "copy", label: "Copy" },
-  { id: "veo", label: "VEO 3" },
-  { id: "gemini", label: "Gemini" },
+  { id: "selfie", label: "Selfie" },
   { id: "pov", label: "POV" },
   { id: "publication", label: "Publicação" },
 ];
@@ -47,8 +46,7 @@ export function buildCreativePackage(creative: CreativeEnvelope) {
 }
 
 function buildSectionPackage(creative: CreativeEnvelope, tab: ResultTab) {
-  if (tab === "gemini") return isBlocked(creative, "promptGemini") ? "" : creative.promptGemini;
-  if (tab === "veo") return [creative.veoPrompts.trecho1, creative.veoPrompts.trecho2, creative.veoPrompts.trecho3].filter(Boolean).join("\n\n");
+  if (tab === "selfie") return [creative.promptGemini, creative.veoPrompts.trecho1, creative.veoPrompts.trecho2, creative.veoPrompts.trecho3].filter(Boolean).join("\n\n");
   if (tab === "pov") return [creative.promptGeminiPov, creative.veoPromptsPov.trecho1, creative.veoPromptsPov.trecho2, creative.veoPromptsPov.trecho3].filter(Boolean).join("\n\n");
   if (tab === "copy") return [creative.copy.trecho1?.texto, creative.copy.trecho2?.texto, creative.copy.trecho3?.texto, creative.pov.texto].filter(Boolean).join("\n\n");
   return buildCreativePackage(creative);
@@ -69,6 +67,16 @@ function OutputField({ title, text, label, blocked = false, meta }: { title: str
   </section>;
 }
 
+function PromptField({ title, text, label, blocked = false }: { title: string; text: string | null; label: string; blocked?: boolean }) {
+  return <section className={styles.outputField}>
+    <div className={styles.outputHeading}>
+      <h3>{title}</h3>
+      <CopyField label={label} text={text} blocked={blocked} />
+    </div>
+    <pre className={styles.prompt}>{text ?? "Conteúdo indisponível."}</pre>
+  </section>;
+}
+
 function CopyPanel({ creative }: { creative: CreativeEnvelope }) {
   const screenText = creative.textoNaTela ?? "Sem texto na tela.";
   return <div className={styles.panelStack}>
@@ -86,43 +94,24 @@ function CopyPanel({ creative }: { creative: CreativeEnvelope }) {
   </div>;
 }
 
-function VeoPanel({ creative }: { creative: CreativeEnvelope }) {
+function SelfiePanel({ creative }: { creative: CreativeEnvelope }) {
   return <div className={styles.panelStack}>
+    <PromptField title="Prompt Gemini" text={creative.promptGemini} label="Copiar Prompt Gemini" blocked={isBlocked(creative, "promptGemini")} />
     {[1, 2, 3].map((index) => {
       const key = `trecho${index}` as "trecho1" | "trecho2" | "trecho3";
       if (!creative.copy[key]) return null;
-      return <OutputField key={key} title={`Prompt VEO 3 — Trecho ${index}`} text={creative.veoPrompts[key]} label={`Copiar Prompt VEO 3 — Trecho ${index}`} blocked={isBlocked(creative, `veoPrompts.${key}`)} />;
+      return <PromptField key={key} title={`Prompt VEO 3 — Trecho ${index}`} text={creative.veoPrompts[key]} label={`Copiar Prompt VEO 3 — Trecho ${index}`} blocked={isBlocked(creative, `veoPrompts.${key}`)} />;
     })}
   </div>;
 }
 
-function GeminiPanel({ creative }: { creative: CreativeEnvelope }) {
-  return <section className={styles.geminiPanel}>
-    <div>
-      <p className={styles.panelEyebrow}>Prompt para imagem de referência</p>
-      <h3>Prompt para Gemini</h3>
-      <p className={styles.panelHint}>Inclui o produto e a copy deste criativo.</p>
-    </div>
-    <pre className={styles.prompt}>{creative.promptGemini}</pre>
-    <CopyField label="Copiar Prompt Gemini" text={creative.promptGemini} blocked={isBlocked(creative, "promptGemini")} />
-  </section>;
-}
-
 function PovPanel({ creative }: { creative: CreativeEnvelope }) {
   return <div className={styles.panelStack}>
-    <section className={styles.geminiPanel}>
-      <div>
-        <p className={styles.panelEyebrow}>Prompt para imagem de referência POV</p>
-        <h3>Prompt para Gemini (POV)</h3>
-        <p className={styles.panelHint}>Mão e antebraço interagindo com o produto, sem rosto e sem celular visível.</p>
-      </div>
-      <pre className={styles.prompt}>{creative.promptGeminiPov}</pre>
-      <CopyField label="Copiar Prompt Gemini (POV)" text={creative.promptGeminiPov} blocked={isBlocked(creative, "promptGeminiPov")} />
-    </section>
+    <PromptField title="Prompt Gemini (POV)" text={creative.promptGeminiPov} label="Copiar Prompt Gemini (POV)" blocked={isBlocked(creative, "promptGeminiPov")} />
     {[1, 2, 3].map((index) => {
       const key = `trecho${index}` as "trecho1" | "trecho2" | "trecho3";
       if (!creative.copy[key]) return null;
-      return <OutputField key={key} title={`Prompt VEO 3 (POV) — Trecho ${index}`} text={creative.veoPromptsPov[key]} label={`Copiar Prompt VEO 3 (POV) — Trecho ${index}`} blocked={isBlocked(creative, `veoPromptsPov.${key}`)} />;
+      return <PromptField key={key} title={`Prompt VEO 3 (POV) — Trecho ${index}`} text={creative.veoPromptsPov[key]} label={`Copiar Prompt VEO 3 (POV) — Trecho ${index}`} blocked={isBlocked(creative, `veoPromptsPov.${key}`)} />;
     })}
   </div>;
 }
@@ -183,8 +172,7 @@ export function ResultCard({ creative, label = "Criativo" }: { creative: Creativ
 
     <div className={styles.tabPanel} id={`creative-${creative.id}-${tab}`} role="tabpanel" aria-labelledby={`creative-${creative.id}-${tab}-tab`}>
       {tab === "copy" && <CopyPanel creative={creative} />}
-      {tab === "veo" && <VeoPanel creative={creative} />}
-      {tab === "gemini" && <GeminiPanel creative={creative} />}
+      {tab === "selfie" && <SelfiePanel creative={creative} />}
       {tab === "pov" && <PovPanel creative={creative} />}
       {tab === "publication" && <PublicationPanel creative={creative} />}
     </div>

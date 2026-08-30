@@ -39,7 +39,7 @@ describe("ResultPage", () => {
     await screen.findByRole("heading", { name: "Garrafa térmica" });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     expect(putResult).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("tab", { name: "VEO 3" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Selfie" }));
     expect(screen.getAllByText(/Eu deixo minha água pronta logo cedo/).length).toBeGreaterThan(0);
   });
   it("renders safe missing state for rejected or absent browser storage", async () => {

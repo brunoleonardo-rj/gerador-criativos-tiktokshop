@@ -18,13 +18,13 @@ describe("ResultCard", () => {
     const user = userEvent.setup();
     render(<ResultCard creative={result()} />);
 
-    for (const name of ["Copy", "VEO 3", "Gemini", "Publicação"]) {
+    for (const name of ["Copy", "Selfie", "POV", "Publicação"]) {
       expect(screen.getByRole("tab", { name })).toBeInTheDocument();
     }
     expect(screen.getByRole("button", { name: "Copiar trecho 1" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Copiar Prompt Gemini" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "Gemini" }));
-    expect(screen.getByText("Prompt para Gemini")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Selfie" }));
+    expect(screen.getByText("Prompt Gemini")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copiar Prompt Gemini" })).toBeInTheDocument();
   });
 
@@ -34,7 +34,7 @@ describe("ResultCard", () => {
     render(<ResultCard creative={creative} />);
     await user.click(screen.getByRole("tab", { name: "Publicação" }));
     expect(screen.getByRole("button", { name: "Copiar descrição" })).toBeDisabled();
-    await user.click(screen.getByRole("tab", { name: "VEO 3" }));
+    await user.click(screen.getByRole("tab", { name: "Selfie" }));
     expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeEnabled();
   });
 
@@ -53,11 +53,11 @@ describe("ResultCard", () => {
     render(<ResultCard creative={warning} />);
     await user.click(screen.getByRole("tab", { name: "Publicação" }));
     expect(screen.getByRole("button", { name: "Copiar descrição" })).toBeEnabled();
-    await user.click(screen.getByRole("tab", { name: "VEO 3" }));
+    await user.click(screen.getByRole("tab", { name: "Selfie" }));
     expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeEnabled();
     cleanup();
     render(<ResultCard creative={{ ...warning, veoPrompts: { trecho1: null, trecho2: null, trecho3: null } }} />);
-    await user.click(screen.getByRole("tab", { name: "VEO 3" }));
+    await user.click(screen.getByRole("tab", { name: "Selfie" }));
     expect(screen.getByRole("button", { name: "Copiar Prompt VEO 3 — Trecho 1" })).toBeDisabled();
   });
 
@@ -127,10 +127,9 @@ describe("ResultCard", () => {
   it("switches tabs with the keyboard and displays real rendered prompts", async () => {
     render(<ResultCard creative={result()} />);
     expect(screen.getAllByText(/Palavras reais:/).length).toBeGreaterThan(0);
-    screen.getByRole("tab", { name: "VEO 3" }).focus();
+    screen.getByRole("tab", { name: "Selfie" }).focus();
     await userEvent.keyboard("{Enter}");
     expect(screen.getByText(/VEO Eu deixo minha água/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: "Gemini" }));
     expect(screen.getByText(/PRODUTO: Garrafa térmica/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("tab", { name: "POV" }));
     expect(screen.getByText(/estilo POV/)).toBeInTheDocument();
