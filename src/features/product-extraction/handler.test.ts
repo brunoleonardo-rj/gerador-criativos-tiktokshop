@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import { GenerationFailure } from "@/features/generation/anthropic-errors";
 import type { ProductSourceImage } from "./prompt";

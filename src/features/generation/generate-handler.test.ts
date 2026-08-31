@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import { generationInputFixture } from "../../../tests/fixtures/creative-result";
 import { MAX_BODY_BYTES, makeGenerateHandler } from "./generate-handler";
