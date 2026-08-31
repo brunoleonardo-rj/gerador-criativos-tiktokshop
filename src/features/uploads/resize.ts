@@ -4,6 +4,19 @@ export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as
 export type AcceptedImageType = (typeof ACCEPTED_IMAGE_TYPES)[number];
 export type ResizedImage = { blob: Blob; name: string; type: AcceptedImageType; width: number; height: number; size: number };
 
+/**
+ * Para uma captura de tela alta, o lado maior é a altura — e limitar por ele
+ * esmaga justamente a largura, que é onde o texto vive. Uma página de 1080x14000
+ * chegava ao modelo com 468px de largura e ficava ilegível. Aqui a largura é
+ * preservada; a altura é resolvida depois, recortando a captura em partes.
+ */
+export function calculateUploadDimensions(width: number, height: number, maxSide = MAX_IMAGE_SIDE): { width: number; height: number } {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) throw new Error("Invalid image dimensions.");
+  if (height <= width) return calculateResizeDimensions(width, height, maxSide);
+  const scale = Math.min(1, maxSide / width);
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
 export function calculateResizeDimensions(width: number, height: number, maxSide = MAX_IMAGE_SIDE): { width: number; height: number } {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) throw new Error("Invalid image dimensions.");
   if (!Number.isFinite(maxSide) || maxSide <= 0) throw new Error("Invalid maximum image dimension.");
@@ -44,7 +57,7 @@ export async function resizeImage(file: File): Promise<ResizedImage> {
         size: file.size,
       };
     }
-    const dimensions = calculateResizeDimensions(source.width, source.height);
+    const dimensions = calculateUploadDimensions(source.width, source.height);
     const canvas = document.createElement("canvas");
     canvas.width = dimensions.width;
     canvas.height = dimensions.height;

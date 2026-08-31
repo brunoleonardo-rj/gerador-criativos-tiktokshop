@@ -30,14 +30,34 @@ describe("findContentBounds", () => {
 });
 
 describe("calculateVerticalTiles", () => {
-  it("turns the reported TikTok capture into eight readable overlapping parts", () => {
+  it("cobre a captura inteira com partes sobrepostas", () => {
     const tiles = calculateVerticalTiles({ x: 726, y: 0, width: 468, height: 13_715 }, 8);
 
     expect(tiles).toHaveLength(8);
     expect(tiles[0]).toMatchObject({ x: 726, y: 0, width: 468 });
     expect(tiles.at(-1)!.y + tiles.at(-1)!.height).toBe(13_715);
-    expect(tiles.every((tile) => calculateResizeDimensions(tile.width, tile.height).width >= 400)).toBe(true);
     expect(tiles.slice(1).every((tile, index) => tile.y < tiles[index].y + tiles[index].height)).toBe(true);
+  });
+
+  it("mantém a largura intacta quando as partes cabem no limite de recortes", () => {
+    // É a propriedade que faz o texto continuar legível: nenhuma parte pode ser
+    // mais alta que MAX_IMAGE_SIDE, senão o redimensionamento mira a altura e
+    // reduz a largura junto. Uma página de 1080x10000 chegava com 492px.
+    const tiles = calculateVerticalTiles({ x: 0, y: 0, width: 1080, height: 10_000 }, 8);
+
+    for (const tile of tiles) {
+      expect(calculateResizeDimensions(tile.width, tile.height).width).toBe(1080);
+    }
+  });
+
+  it("degrada de forma limitada quando a captura excede o teto de recortes", () => {
+    // Acima de 8 partes o teto passa a valer e alguma perda é inevitável; o que
+    // não pode voltar é o colapso para menos da metade da largura original.
+    const tiles = calculateVerticalTiles({ x: 0, y: 0, width: 1080, height: 20_000 }, 8);
+    const largura = calculateResizeDimensions(tiles[0].width, tiles[0].height).width;
+
+    expect(tiles).toHaveLength(8);
+    expect(largura).toBeGreaterThan(1080 * 0.55);
   });
 });
 

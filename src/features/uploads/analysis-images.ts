@@ -1,5 +1,5 @@
 import type { StoredImage } from "@/features/draft/storage";
-import { calculateResizeDimensions, LONG_SCREENSHOT_RATIO } from "./resize";
+import { calculateResizeDimensions, MAX_IMAGE_SIDE } from "./resize";
 
 export type ImageBounds = { x: number; y: number; width: number; height: number };
 export type PreparedSourceImage = Pick<StoredImage, "role" | "type"> & { blob: Blob; name: string };
@@ -56,7 +56,10 @@ export function findContentBounds(image: PixelImage): ImageBounds {
 
 export function calculateVerticalTiles(bounds: ImageBounds, maxParts: number): ImageBounds[] {
   if (bounds.width <= 0 || bounds.height <= 0 || !Number.isInteger(maxParts) || maxParts < 1) throw new Error("Invalid tiling dimensions.");
-  const desiredParts = Math.max(1, Math.ceil(bounds.height / (bounds.width * 3.5)));
+  // Cada parte precisa caber na altura máxima aceita, senão o redimensionamento
+  // volta a mirar a altura e derruba a largura junto. Com 3,5x a largura, toda
+  // parte saía em ~470px e o texto virava borrão.
+  const desiredParts = Math.max(1, Math.ceil(bounds.height / MAX_IMAGE_SIDE));
   const partCount = Math.min(maxParts, desiredParts);
   if (partCount === 1) return [{ ...bounds }];
 
@@ -135,7 +138,9 @@ export async function prepareSourceImages(images: StoredImage[], maxParts = 8): 
     const available = maxParts - prepared.length;
     const reserved = Math.min(remainingImages, available - 1);
     const allowance = available - reserved;
-    if (image.height / image.width >= LONG_SCREENSHOT_RATIO) {
+    // Vale recortar sempre que a altura passa do limite, não só em capturas
+    // muito longas: uma de 1080x3900 não era recortada e chegava com 434px.
+    if (image.height > MAX_IMAGE_SIDE) {
       prepared.push(...await prepareLongImage(image, allowance));
     } else {
       prepared.push({ role: image.role, type: image.type, blob: image.blob, name: image.name });
