@@ -81,5 +81,5 @@ RESTRIÇÕES UNIVERSAIS (aplicam sempre, sem exceção):
 - Não é selfie e não é foto de espelho.
 - Nenhuma tela de dispositivo exibindo app, fotos, miniaturas ou qualquer interface — telas aparecem apagadas ou pretas.
 - Sem sobreposições visuais, sem texto na imagem, sem elementos gráficos, sem marca d'água.
-- Nenhum logotipo ou nome de marca legível em nenhuma superfície.
+- Nenhum logotipo ou nome de marca em nenhuma superfície da cena além do próprio produto. No produto, o rótulo aparece como parte real da embalagem, com as cores e proporções das fotos de referência — não tente escrever texto nítido e legível nele, texto inventado ou distorcido estraga a foto.
 - Não remover, trocar ou substituir peças de roupa. Não alterar proporções corporais. Peça sem amassados, rugas ou vincos, salvo indicação em contrário no bloco TECIDO.`;

@@ -103,7 +103,8 @@ describe("validação editorial", () => {
     expect(withFeet.creatives[0].promptGemini).toContain("pés e tornozelos totalmente visíveis");
     expect(withFeet.creatives[0].promptGemini).toContain("mãos livres e relaxadas");
     expect(withFeet.creatives[0].promptGemini).toContain("CALÇADO:");
-    expect(withFeet.creatives[0].promptGemini).toContain('O detalhe "alça sob o pé" deve ficar nítido');
+    expect(withFeet.creatives[0].promptGemini).toContain('O detalhe "alça sob o pé" deve ficar claramente visível');
+    expect(withFeet.creatives[0].promptGemini).toContain("nunca tentando renderizar texto nítido e legível");
 
     const handheld = validateCreativeBatch(
       generationInputFixture({ productProfile: { formatoUso: "manuseado", zonaFoco: "cabeca", detalheCritico: null } }),
@@ -134,6 +135,8 @@ describe("validação editorial", () => {
       DEFAULT_GEMINI_TEMPLATE,
     );
     expect(manuseado.creatives[0].promptGemini).toContain("em relação à mão");
+    expect(manuseado.creatives[0].promptGemini).not.toContain("Um único exemplar do produto na cena");
+    expect(manuseado.creatives[0].promptGemini).toContain("Não duplique o produto na cena");
   });
 
   it("trava o produto na mão, no corpo ou no ambiente no Prompt VEO conforme o formatoUso", () => {

@@ -44,7 +44,7 @@ export function deriveRenderPlan(profile: ProductProfile): RenderPlan {
     extras.push("Deixe folga acima da cabeça suficiente para que o braço levantado e o produto caibam inteiros no quadro.");
   }
   if (profile.detalheCritico) {
-    extras.push(`O detalhe "${profile.detalheCritico}" deve ficar nítido e legível sem precisar ampliar a imagem.`);
+    extras.push(`O detalhe "${profile.detalheCritico}" deve ficar claramente visível e distinguível sem precisar ampliar a imagem — distinga pela cor, formato e proporção reais, nunca tentando renderizar texto nítido e legível.`);
   }
   return {
     crop,
@@ -105,7 +105,7 @@ export function buildGeminiPrompt(template: string, slots: GeminiSlots, profile:
       ? `AÇÃO E INTERAÇÃO COM O PRODUTO:\n${slots.acao}\n` +
         "O produto permanece apoiado e estável sobre uma superfície da cena — a pessoa não segura nem toca o produto neste quadro, as mãos ficam livres. Um único exemplar do produto na cena, em proporção correta em relação ao ambiente ao redor.\n\n"
       : `AÇÃO E INTERAÇÃO COM O PRODUTO:\n${slots.acao}\n` +
-        "O produto aparece em contato real com a superfície ou parte do corpo em que é usado — o material se acomoda ao redor dele, sem atravessar o objeto e sem flutuar. O produto e o rosto ficam nítidos no mesmo plano de foco. Um único exemplar do produto na cena, em proporção correta em relação à mão.\n\n"
+        "O produto aparece em contato real com a superfície ou parte do corpo em que é usado — o material se acomoda ao redor dele, sem atravessar o objeto e sem flutuar, sempre apoiado ou seguro de forma fisicamente plausível. O produto e o rosto ficam nítidos no mesmo plano de foco. Não duplique o produto na cena: cada item descrito aparece uma única vez, em proporção correta em relação à mão.\n\n"
     : `AÇÃO:\n${slots.acao}\n\n`;
   return renderGeminiTemplate(template, {
     identidade_ugc: slots.identidadeUgc,
