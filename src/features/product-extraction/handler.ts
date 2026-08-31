@@ -5,6 +5,7 @@ import {
 } from "@/features/generation/anthropic-errors";
 import type { ProductSourceImage } from "./prompt";
 import type { ProductExtractionService } from "./service";
+import { readImageDimensions } from "./image-dimensions";
 import {
   collectImageFields,
   parseBoundedMultipart,
@@ -62,6 +63,24 @@ function extractionFailureResponse(code: GenerationErrorCode): Response {
   );
 }
 
+// Diagnóstico temporário: sem saber quantos recortes chegaram e quais campos
+// voltaram vazios, a investigação vira adivinhação. Remover quando concluída.
+function logExtractionShape(images: Array<{ data: string; mediaType: string }>, extraction: Record<string, unknown>): void {
+  const vazio = (valor: unknown) => valor === null || valor === undefined || (Array.isArray(valor) && valor.length === 0);
+  const diagnostic = {
+    recortes: images.length,
+    // base64 -> bytes aproximados, para comparar o tamanho do que foi enviado.
+    recortesEnviados: images.map((image) => {
+      const bytes = Buffer.from(image.data, "base64");
+      const d = readImageDimensions(bytes);
+      return `${d ? `${d.width}x${d.height}` : "?"} ${Math.round(bytes.length / 1024)}kb ${image.mediaType}`;
+    }),
+    preenchidos: Object.entries(extraction).filter(([, valor]) => !vazio(valor)).map(([chave]) => chave),
+    vazios: Object.entries(extraction).filter(([, valor]) => vazio(valor)).map(([chave]) => chave),
+  };
+  console.warn(`[extraction] shape ${JSON.stringify(diagnostic)}`);
+}
+
 export function makeProductExtractionHandler(deps: Dependencies) {
   return async (request: Request): Promise<Response> => {
     try {
@@ -107,6 +126,7 @@ export function makeProductExtractionHandler(deps: Dependencies) {
         images,
         AbortSignal.timeout(60_000),
       );
+      logExtractionShape(images, extraction);
       return Response.json(extraction);
     } catch (error) {
       const code =
